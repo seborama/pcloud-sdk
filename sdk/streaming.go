@@ -25,9 +25,8 @@ type FileLink struct {
 // for this download.
 // Finally you can set skipfilename so the link generated will not include the name of the file.
 // https://docs.pcloud.com/methods/streaming/getfilelink.html.
-func (c *Client) GetFileLink(ctx context.Context, path string, fileID uint64, forceDownloadOpt bool, contentTypeOpt string, maxSpeedOpt uint64, skipFilenameOpt bool, opts ...ClientOptions) (*FileLink, error) {
+func (c *Client) GetFileLink(ctx context.Context, path string, fileID uint64, forceDownloadOpt bool, contentTypeOpt string, maxSpeedOpt uint64, skipFilenameOpt bool, opts ...ClientOption) (*FileLink, error) {
 	q := url.Values{}
-	q.Add("auth", c.auth)
 	if path != "" {
 		q.Add("path", path)
 	} else {

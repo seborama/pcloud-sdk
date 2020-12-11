@@ -56,7 +56,6 @@ func fromBool(b bool) string {
 // https://docs.pcloud.com/methods/folder/listfolder.html.
 func (c *Client) ListFolder(ctx context.Context, path string, folderID uint64, recursiveOpt, showDeletedOpt, noFilesOpt, noSharesOpt bool) (*ListFolder, error) {
 	q := url.Values{}
-	q.Add("auth", c.auth)
 	if path != "" {
 		q.Add("path", path)
 	} else {
@@ -70,6 +69,28 @@ func (c *Client) ListFolder(ctx context.Context, path string, folderID uint64, r
 	lf := &ListFolder{}
 
 	err := parseAPIOutput(lf)(c.request(ctx, "listfolder", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return lf, nil
+}
+
+// CreateFolder creates a folder.
+// Expects either path string parameter (discouraged) or int folderid and string name parameters.
+// https://docs.pcloud.com/methods/folder/listfolder.html.
+func (c *Client) CreateFolder(ctx context.Context, path string, folderID uint64, name string) (*ListFolder, error) {
+	q := url.Values{}
+	if path != "" {
+		q.Add("path", path)
+	} else {
+		q.Add("folderid", fmt.Sprintf("%d", folderID))
+		q.Add("name", name)
+	}
+
+	lf := &ListFolder{}
+
+	err := parseAPIOutput(lf)(c.request(ctx, "createfolder", q))
 	if err != nil {
 		return nil, err
 	}

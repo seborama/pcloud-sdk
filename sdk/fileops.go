@@ -40,9 +40,8 @@ const (
 
 // FileOpen opens a file descriptor.
 // https://docs.pcloud.com/methods/fileops/file_open.html.
-func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fileIDOpt uint64, folderIDOpt uint64, nameOpt string, opts ...ClientOptions) (*File, error) {
+func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fileIDOpt uint64, folderIDOpt uint64, nameOpt string, opts ...ClientOption) (*File, error) {
 	q := url.Values{}
-	q.Add("auth", c.auth)
 	q.Add("flags", fmt.Sprintf("%d", flags))
 	if pathOpt != "" {
 		q.Add("path", pathOpt)
@@ -50,9 +49,7 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 	if fileIDOpt != 0 {
 		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
 	}
-	if folderIDOpt != 0 {
-		q.Add("folderid", fmt.Sprintf("%d", folderIDOpt))
-	}
+	q.Add("folderid", fmt.Sprintf("%d", folderIDOpt))
 	if nameOpt != "" {
 		q.Add("name", nameOpt)
 	}
@@ -69,10 +66,8 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 
 // FileClose closes a file descriptor.
 // https://docs.pcloud.com/methods/fileops/file_close.html.
-func (c *Client) FileClose(ctx context.Context, fd uint64, opts ...ClientOptions) error {
+func (c *Client) FileClose(ctx context.Context, fd uint64, opts ...ClientOption) error {
 	q := url.Values{}
-	q.Add("auth", c.auth)
-	q.Add("fd", fmt.Sprintf("%d", fd))
 
 	f := &result{}
 

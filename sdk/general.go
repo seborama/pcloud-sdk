@@ -61,17 +61,22 @@ type APIServer struct {
 	API    []string
 }
 
+func toQuery(opts ...ClientOption) url.Values {
+	q := url.Values{}
+
+	for _, opt := range opts {
+		opt(&q)
+	}
+
+	return q
+}
+
 // UserInfo returns information about the current user.
 // As there is no specific login method as credentials can be passed to any method,
 // this is an especially good place for logging in with no particular action in mind.
-func (c *Client) UserInfo(ctx context.Context, username, password string) (*UserInfo, error) {
-	q := url.Values{}
-	q.Add("username", username)
-	q.Add("password", password)
-	q.Add("getauth", "1")
-	q.Add("authexpire", c.authExpire.String())
-	q.Add("authinactiveexpire", c.authInactiveExpire.String())
-	q.Add("logout", "1")
+// https://docs.pcloud.com/methods/general/userinfo.html
+func (c *Client) UserInfo(ctx context.Context, opts ...ClientOption) (*UserInfo, error) {
+	q := toQuery(opts...)
 	q.Add("getregistrationinfo", "1")
 	q.Add("getapiserver", "1")
 
@@ -81,8 +86,6 @@ func (c *Client) UserInfo(ctx context.Context, username, password string) (*User
 	if err != nil {
 		return nil, err
 	}
-
-	c.auth = ui.Auth
 
 	return ui, nil
 }

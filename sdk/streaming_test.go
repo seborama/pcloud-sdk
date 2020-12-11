@@ -10,8 +10,6 @@ import (
 )
 
 func Test_GetFileLink(t *testing.T) {
-	getAuth()
-
 	fl, err := pcc.GetFileLink(context.Background(), "/Test/My Folder/File 1.pdf", 0, true, "", 0, false)
 	require.NoError(t, err)
 	assert.Equal(t, 0, fl.Result)

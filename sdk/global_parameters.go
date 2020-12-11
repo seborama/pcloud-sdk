@@ -1,15 +1,20 @@
 package sdk
 
-// See https://docs.pcloud.com/methods/intro/global_parameters.html
+import (
+	"fmt"
+	"net/url"
+	"time"
+)
 
-type Options map[string]string
+type ClientOption func(q *url.Values)
 
-type ClientOptions func(o *Options)
-
-// WithGlobalOptionID if set to anything, you will get it back in the reply (no matter successful or not). This might be useful if you pipeline requests from many places over single connection.
-func WithGlobalOptionID(id string) ClientOptions {
-	return func(o *Options) {
-		(*o)["id"] = id
+// WithGlobalOptionID if set to anything, you will get it back in the reply (no matter
+// successful or not). This might be useful if you pipeline requests from many places over
+// single connection.
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionID(id string) ClientOption {
+	return func(q *url.Values) {
+		q.Add("id", id)
 	}
 }
 
@@ -17,10 +22,11 @@ func WithGlobalOptionID(id string) ClientOptions {
 // as UTC unix timestamps, otherwise the default date format is used.
 // The default datetime format is Thu, 21 Mar 2013 18:31:45 +0000 (rfc 2822), exactly 31 bytes
 // long.
-func WithGlobalOptionTimeFormatAsUnixUTCTimestamp() ClientOptions {
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionTimeFormatAsUnixUTCTimestamp() ClientOption {
 	// TODO: this is currently ineffective as it isn't coordinated with `APITime`
-	return func(o *Options) {
-		(*o)["timeformat"] = "timestamp"
+	return func(q *url.Values) {
+		q.Add("timeformat", "timestamp")
 	}
 }
 
@@ -28,20 +34,62 @@ func WithGlobalOptionTimeFormatAsUnixUTCTimestamp() ClientOptions {
 // Auth tokens are at most 64 bytes long and can be passed back instead of username/password
 // credentials by auth parameter.
 // This token is especially good for setting the auth cookie to keep the user logged in.
-func WithGlobalOptionGetAuth() ClientOptions {
-	return func(o *Options) {
-		(*o)["getauth"] = "1"
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionGetAuth() ClientOption {
+	return func(q *url.Values) {
+		q.Add("getauth", "1")
 	}
 }
 
-// WithGlobalOptionFilterMeta if set, it is supposed to be a comma (with no whitespace
-// after it) separated list of fileds of metadata that you wish to receive from all calls
-// returning metadata. This may be used to eliminate fields that you don't use and thus reduce
-// the amount of traffic and parsing required for communications.
-// If set to empty string/0 restores the default all value.
-// You don't need to send this with every request, once per connection suffices.
-func WithGlobalOptionFilterMeta() ClientOptions {
-	return func(o *Options) {
-		(*o)["filtermeta"] = "1"
+// WithGlobalOptionUsername sets the username in plain text.
+// Should only be used over SSL connections.
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionUsername(username string) ClientOption {
+	return func(q *url.Values) {
+		q.Add("username", username)
+	}
+}
+
+// WithGlobalOptionPassword sets the password in plain text.
+// Should only be used over SSL connections.
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionPassword(password string) ClientOption {
+	return func(q *url.Values) {
+		q.Add("password", password)
+	}
+}
+
+// WithGlobalOptionAuthExpire defines the expire value of authentication token, when it is
+// requested. This field is in seconds and the expire will the moment after these seconds
+// since the current moment.
+// Defaults to 31536000 and its maximum is 63072000.
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionAuthExpire(authExpire time.Duration) ClientOption {
+	return func(q *url.Values) {
+		e := int64(authExpire.Seconds())
+		if e < 0 {
+			e = 31536000
+		}
+		if e > 63072000 {
+			e = 63072000
+		}
+		q.Add("authexpire", fmt.Sprintf("%d", e))
+	}
+}
+
+// WithGlobalOptionAuthInactiveExpire defines the expire_inactive value of authentication token,
+// when it is requested. This field is in seconds and the expire_incative will the moment
+// after these seconds since the current moment. Defaults to 2678400 and its maximum is 5356800.
+// https://docs.pcloud.com/methods/intro/global_parameters.html
+func WithGlobalOptionAuthInactiveExpire(authInactiveExpire time.Duration) ClientOption {
+	return func(q *url.Values) {
+		e := int64(authInactiveExpire.Seconds())
+		if e < 0 {
+			e = 2678400
+		}
+		if e > 5356800 {
+			e = 5356800
+		}
+		q.Add("authinactiveexpire", fmt.Sprintf("%d", e))
 	}
 }
