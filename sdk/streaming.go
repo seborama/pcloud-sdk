@@ -3,9 +3,9 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"net/url"
 )
 
+// FileLink contains the details of a file link, as provided by GetFileLink.
 type FileLink struct {
 	result
 	Path    string
@@ -24,9 +24,10 @@ type FileLink struct {
 // Parameter maxspeed may be used if you wish to limit the download speed (in bytes per second)
 // for this download.
 // Finally you can set skipfilename so the link generated will not include the name of the file.
-// https://docs.pcloud.com/methods/streaming/getfilelink.html.
+// https://docs.pcloud.com/methods/streaming/getfilelink.html
 func (c *Client) GetFileLink(ctx context.Context, path string, fileID uint64, forceDownloadOpt bool, contentTypeOpt string, maxSpeedOpt uint64, skipFilenameOpt bool, opts ...ClientOption) (*FileLink, error) {
-	q := url.Values{}
+	q := toQuery(opts...)
+
 	if path != "" {
 		q.Add("path", path)
 	} else {

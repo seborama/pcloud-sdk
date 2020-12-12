@@ -5,11 +5,14 @@ import (
 	"fmt"
 )
 
+// ListFolder contains the properties returned by several folder-operating APIs such as:
+// CreeateFolder, DeleteFolder, ListFolder, etc.
 type ListFolder struct {
 	result
 	Metadata Metadata
 }
 
+// Metadata contains properties related to folder and file information.
 type Metadata struct {
 	Path string
 
@@ -38,17 +41,19 @@ type Metadata struct {
 	ContentType string `json:"contenttype,omitempty"`
 }
 
+// DeleteResult contains the properties returned by DeleteFolderRecursive.
 type DeleteResult struct {
 	result
 	DeletedFiles   uint64
 	DeletedFolders uint64
 }
 
+// fromBool convert a boolean to a value (it may be any) when true or an empty string otherwise.
 func fromBool(b bool) string {
 	if b {
 		return "1"
 	}
-	return "0"
+	return ""
 }
 
 // ListFolder receives data for a folder.

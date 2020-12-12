@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// ClientOption is a Go functional parameter signature.
+// This is used by most SDK methods to pass global parameters such as username,
+// getauth,id, authexpire, etc.
 type ClientOption func(q *url.Values)
 
 // WithGlobalOptionID if set to anything, you will get it back in the reply (no matter

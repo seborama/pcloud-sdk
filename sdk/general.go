@@ -5,6 +5,7 @@ import (
 	"net/url"
 )
 
+// UserInfo contains properties about a user account.
 type UserInfo struct {
 	result
 	CryptoSetup           bool
@@ -36,6 +37,7 @@ type UserInfo struct {
 	APIServer             APIServer
 }
 
+// RegistrationInfo contains registration information about a user account.
 type RegistrationInfo struct {
 	Provider int
 	Device   string
@@ -43,10 +45,12 @@ type RegistrationInfo struct {
 	Ref      int
 }
 
+// Journey contains the details of the user registration journey steps.
 type Journey struct {
 	Steps Steps
 }
 
+// Steps contains the various steps of the user registration journey.
 type Steps struct {
 	VerifyMail     bool
 	UploadFile     bool
@@ -56,11 +60,14 @@ type Steps struct {
 	SentInvitation bool
 }
 
+// APIServer contains the details of the API servers: Binary and JSON API endpoints.
 type APIServer struct {
 	BinAPI []string
 	API    []string
 }
 
+// toQuery create a blank url.Value object for use as a query with an HTTPS request.
+// It applies the options specified by opts to it and returns it.
 func toQuery(opts ...ClientOption) url.Values {
 	q := url.Values{}
 
@@ -77,6 +84,7 @@ func toQuery(opts ...ClientOption) url.Values {
 // https://docs.pcloud.com/methods/general/userinfo.html
 func (c *Client) UserInfo(ctx context.Context, opts ...ClientOption) (*UserInfo, error) {
 	q := toQuery(opts...)
+
 	q.Add("getregistrationinfo", "1")
 	q.Add("getapiserver", "1")
 

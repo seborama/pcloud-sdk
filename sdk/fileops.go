@@ -3,9 +3,9 @@ package sdk
 import (
 	"context"
 	"fmt"
-	"net/url"
 )
 
+// File contains properties about an opened file, notably the file descriptor FD.
 type File struct {
 	result
 	FD     uint64
@@ -39,9 +39,10 @@ const (
 )
 
 // FileOpen opens a file descriptor.
-// https://docs.pcloud.com/methods/fileops/file_open.html.
+// https://docs.pcloud.com/methods/fileops/file_open.html
 func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fileIDOpt uint64, folderIDOpt uint64, nameOpt string, opts ...ClientOption) (*File, error) {
-	q := url.Values{}
+	q := toQuery(opts...)
+
 	q.Add("flags", fmt.Sprintf("%d", flags))
 	if pathOpt != "" {
 		q.Add("path", pathOpt)
@@ -65,9 +66,9 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 }
 
 // FileClose closes a file descriptor.
-// https://docs.pcloud.com/methods/fileops/file_close.html.
+// https://docs.pcloud.com/methods/fileops/file_close.html
 func (c *Client) FileClose(ctx context.Context, fd uint64, opts ...ClientOption) error {
-	q := url.Values{}
+	q := toQuery(opts...)
 
 	f := &result{}
 

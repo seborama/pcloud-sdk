@@ -20,12 +20,14 @@ type Client struct {
 	auth string
 }
 
+// NewClient creates a new initialised pCloud Client.
 func NewClient() *Client {
 	return &Client{
 		apiURL: "eapi.pcloud.com", // TODO: have a retry strategy that sets the URL when logon is successful with one of the datacentres (US or EU)
 	}
 }
 
+// request executes an HTTPS (enforced) request to the pCloud API endpoint.
 func (c *Client) request(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
 	if c.auth != "" {
 		query.Add("auth", c.auth)
@@ -68,7 +70,10 @@ type result struct {
 	Error  string `json:"error"`
 }
 
-func (r result) Result_() int   { return r.Result }
+// Result_ returns the Result property.
+func (r result) Result_() int { return r.Result }
+
+// Error_ returns the Error property.
 func (r result) Error_() string { return r.Error }
 
 type resulter interface {
@@ -80,12 +85,14 @@ type resultGetter interface {
 	GetResult() result
 }
 
+// parseAPIOutput is a curry for parseResult.
 func parseAPIOutput(r resulter) func(body []byte, err error) error {
 	return func(body []byte, err error) error {
 		return parseResult(body, err, r)
 	}
 }
 
+// parseResult parses the body of the response from the pCloud API.
 func parseResult(body []byte, err error, r resulter) error {
 	if err != nil {
 		return errors.WithStack(err)
