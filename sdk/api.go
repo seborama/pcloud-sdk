@@ -50,6 +50,7 @@ func (c *Client) request(ctx context.Context, endpoint string, query url.Values)
 	if err != nil {
 		return nil, errors.Wrap(err, "http Do")
 	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "body")
