@@ -1,90 +1,77 @@
 package sdk_test
 
 import (
-	"context"
 	"fmt"
 	"seborama/pcloud/sdk"
-	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func Test_FolderOperations_ByPath(t *testing.T) {
-	folderPath := "/go_pCloud_" + uuid.New().String()
+func (suite *IntegrationTestSuite) Test_FolderOperations_ByPath() {
+	folderPath := suite.testFolderPath + "/go_pCloud_" + uuid.New().String()
 
-	_, err := pcc.DeleteFolderRecursive(context.Background(), folderPath, 0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
+	_, err := suite.pcc.DeleteFolderRecursive(suite.ctx, folderPath, 0)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
 
-	_, err = pcc.DeleteFolder(context.Background(), folderPath, 0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
+	_, err = suite.pcc.DeleteFolder(suite.ctx, folderPath, 0)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
 
-	lf, err := pcc.CreateFolder(context.Background(), folderPath, 0, "")
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err := suite.pcc.CreateFolder(suite.ctx, folderPath, 0, "")
+	suite.Require().NoError(err)
 
-	lf, err = pcc.CreateFolderIfNotExists(context.Background(), folderPath, 0, "")
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.CreateFolderIfNotExists(suite.ctx, folderPath, 0, "")
+	suite.Require().NoError(err)
 
-	lf, err = pcc.ListFolder(context.Background(), folderPath, 0, true, false, false, false)
-	require.NoError(t, err)
-	assert.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.ListFolder(suite.ctx, folderPath, 0, true, false, false, false)
+	suite.Require().NoError(err)
 
-	fr, err := pcc.DeleteFolderRecursive(context.Background(), folderPath, 0)
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, fr.DeletedFolders)
-	assert.EqualValues(t, 0, fr.DeletedFiles)
+	fr, err := suite.pcc.DeleteFolderRecursive(suite.ctx, folderPath, 0)
+	suite.Require().NoError(err)
+	suite.EqualValues(1, fr.DeletedFolders)
+	suite.EqualValues(0, fr.DeletedFiles)
 
-	lf, err = pcc.CreateFolderIfNotExists(context.Background(), folderPath, 0, "")
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.CreateFolderIfNotExists(suite.ctx, folderPath, 0, "")
+	suite.Require().NoError(err)
 
-	lf, err = pcc.DeleteFolder(context.Background(), folderPath, 0)
-	require.NoError(t, err)
-	assert.Equal(t, 0, lf.Result)
-	assert.Equal(t, folderPath, lf.Metadata.Path)
+	lf, err = suite.pcc.DeleteFolder(suite.ctx, folderPath, 0)
+	suite.Require().NoError(err)
+	suite.Equal(folderPath, lf.Metadata.Path)
 }
 
-func Test_FolderOperations_ByID(t *testing.T) {
+func (suite *IntegrationTestSuite) Test_FolderOperations_ByID() {
+	folderPath := suite.testFolderPath + "/go_pCloud_" + uuid.New().String()
 	folderName := "go_pCloud_" + uuid.New().String()
 
-	_, err := pcc.DeleteFolderRecursive(context.Background(), "/"+folderName, 0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
+	_, err := suite.pcc.DeleteFolderRecursive(suite.ctx, folderPath+"/"+folderName, 0)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
 
-	_, err = pcc.DeleteFolder(context.Background(), "/"+folderName, 0)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
+	_, err = suite.pcc.DeleteFolder(suite.ctx, folderPath+"/"+folderName, 0)
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d:", sdk.ErrDirectoryNotExists))
 
-	lf, err := pcc.CreateFolder(context.Background(), "", sdk.RootFolderID, folderName)
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err := suite.pcc.CreateFolder(suite.ctx, "", suite.testFolderID, folderName)
+	suite.Require().NoError(err)
 	folderID := lf.Metadata.FolderID
 
-	lf, err = pcc.CreateFolderIfNotExists(context.Background(), "", sdk.RootFolderID, folderName)
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.CreateFolderIfNotExists(suite.ctx, "", suite.testFolderID, folderName)
+	suite.Require().NoError(err)
 
-	lf, err = pcc.ListFolder(context.Background(), "", folderID, true, false, false, false)
-	require.NoError(t, err)
-	assert.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.ListFolder(suite.ctx, "", folderID, true, false, false, false)
+	suite.Require().NoError(err)
 
-	fr, err := pcc.DeleteFolderRecursive(context.Background(), "", folderID)
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, fr.DeletedFolders)
-	assert.EqualValues(t, 0, fr.DeletedFiles)
+	fr, err := suite.pcc.DeleteFolderRecursive(suite.ctx, "", folderID)
+	suite.Require().NoError(err)
+	suite.EqualValues(1, fr.DeletedFolders)
+	suite.EqualValues(0, fr.DeletedFiles)
 
-	lf, err = pcc.CreateFolderIfNotExists(context.Background(), "", sdk.RootFolderID, folderName)
-	require.NoError(t, err)
-	require.Equal(t, 0, lf.Result)
+	lf, err = suite.pcc.CreateFolderIfNotExists(suite.ctx, "", suite.testFolderID, folderName)
+	suite.Require().NoError(err)
 	folderID = lf.Metadata.FolderID
 
-	lf, err = pcc.DeleteFolder(context.Background(), "", folderID)
-	require.NoError(t, err)
-	assert.Equal(t, 0, lf.Result)
-	assert.EqualValues(t, folderID, lf.Metadata.FolderID)
+	lf, err = suite.pcc.DeleteFolder(suite.ctx, "", folderID)
+	suite.Require().NoError(err)
+	suite.EqualValues(folderID, lf.Metadata.FolderID)
 }

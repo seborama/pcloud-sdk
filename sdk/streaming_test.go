@@ -1,41 +1,30 @@
 package sdk_test
 
 import (
-	"context"
 	"seborama/pcloud/sdk"
-	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 )
 
-func Test_GetFileLink(t *testing.T) {
-	folderPath := "/go_pCloud_" + uuid.New().String()
+func (suite *IntegrationTestSuite) Test_GetFileLink() {
 	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
 
-	_, err := pcc.CreateFolder(context.Background(), folderPath, 0, "")
-	require.NoError(t, err)
-	defer func() {
-		_, err = pcc.DeleteFolderRecursive(context.Background(), folderPath, 0)
-		require.NoError(t, err)
-	}()
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, suite.testFolderPath+"/"+fileName, 0, 0, "")
+	suite.Require().NoError(err)
 
-	f, err := pcc.FileOpen(context.Background(), sdk.O_CREAT|sdk.O_EXCL, folderPath+"/"+fileName, 0, 0, "")
-	require.NoError(t, err)
+	fdt, err := suite.pcc.FileWrite(suite.ctx, f.FD, []byte(Lipsum))
+	suite.Require().NoError(err)
+	suite.Require().EqualValues(len(Lipsum), fdt.Bytes)
 
-	fdt, err := pcc.FileWrite(context.Background(), f.FD, []byte(Lipsum))
-	require.NoError(t, err)
-	require.EqualValues(t, len(Lipsum), fdt.Bytes)
+	err = suite.pcc.FileClose(suite.ctx, f.FD)
+	suite.Require().NoError(err)
 
-	err = pcc.FileClose(context.Background(), f.FD)
-	require.NoError(t, err)
-
-	fl, err := pcc.GetFileLink(context.Background(), folderPath+"/"+fileName, 0, true, "", 0, false)
-	require.NoError(t, err)
-	require.Equal(t, 0, fl.Result)
-	require.GreaterOrEqual(t, len(fl.Path), 10)
-	require.EqualValues(t, '/', fl.Path[0])
-	require.True(t, fl.Expires.After(time.Now().Add(time.Hour)))
-	require.GreaterOrEqual(t, len(fl.Hosts), 1)
+	fl, err := suite.pcc.GetFileLink(suite.ctx, suite.testFolderPath+"/"+fileName, 0, true, "", 0, false)
+	suite.Require().NoError(err)
+	suite.Require().Equal(0, fl.Result)
+	suite.Require().GreaterOrEqual(len(fl.Path), 10)
+	suite.Require().EqualValues('/', fl.Path[0])
+	suite.Require().True(fl.Expires.After(time.Now().Add(time.Hour)))
+	suite.Require().GreaterOrEqual(len(fl.Hosts), 1)
 }
