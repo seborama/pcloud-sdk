@@ -44,12 +44,15 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 	q := toQuery(opts...)
 
 	q.Add("flags", fmt.Sprintf("%d", flags))
+
 	if pathOpt != "" {
 		q.Add("path", pathOpt)
 	}
+
 	if fileIDOpt != 0 {
 		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
 	}
+
 	q.Add("folderid", fmt.Sprintf("%d", folderIDOpt))
 	if nameOpt != "" {
 		q.Add("name", nameOpt)
@@ -57,7 +60,7 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 
 	f := &File{}
 
-	err := parseAPIOutput(f)(c.request(ctx, "file_open", q))
+	err := parseAPIOutput(f)(c.get(ctx, "file_open", q))
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +68,40 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 	return f, nil
 }
 
+type FileDataTransfer struct {
+	result
+	Bytes uint64
+}
+
+// FileWrite writes as much data as you send to the file descriptor fd to the current file
+// offset and adjusts the offset.
+// You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
+// https://docs.pcloud.com/methods/fileops/file_write.html
+func (c *Client) FileWrite(ctx context.Context, fd uint64, data []byte, opts ...ClientOption) (*FileDataTransfer, error) {
+	q := toQuery(opts...)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+
+	fdt := &FileDataTransfer{}
+
+	err := parseAPIOutput(fdt)(c.put(ctx, "file_write", q, data))
+	if err != nil {
+		return nil, err
+	}
+
+	return fdt, nil
+}
+
 // FileClose closes a file descriptor.
 // https://docs.pcloud.com/methods/fileops/file_close.html
 func (c *Client) FileClose(ctx context.Context, fd uint64, opts ...ClientOption) error {
 	q := toQuery(opts...)
 
+	q.Add("fd", fmt.Sprintf("%d", fd))
+
 	f := &result{}
 
-	err := parseAPIOutput(f)(c.request(ctx, "file_close", q))
+	err := parseAPIOutput(f)(c.get(ctx, "file_close", q))
 	if err != nil {
 		return err
 	}

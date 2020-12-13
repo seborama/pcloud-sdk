@@ -33,16 +33,24 @@ func (c *Client) GetFileLink(ctx context.Context, path string, fileID uint64, fo
 	} else {
 		q.Add("fileid", fmt.Sprintf("%d", fileID))
 	}
-	q.Add("forcedownload", fromBool(forceDownloadOpt))
+
+	if forceDownloadOpt {
+		q.Add("forcedownload", "1")
+	}
+
 	q.Add("contenttype", contentTypeOpt)
+
 	if maxSpeedOpt > 0 {
 		q.Add("maxspeed", fmt.Sprintf("%d", maxSpeedOpt))
 	}
-	q.Add("skipfilename", fromBool(skipFilenameOpt))
+
+	if skipFilenameOpt {
+		q.Add("skipfilename", "1")
+	}
 
 	fl := &FileLink{}
 
-	err := parseAPIOutput(fl)(c.request(ctx, "getfilelink", q))
+	err := parseAPIOutput(fl)(c.get(ctx, "getfilelink", q))
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,11 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,7 +15,8 @@ import (
 
 // Client contains the data necessary to make API calls to pCloud.
 type Client struct {
-	apiURL string
+	httpClient *http.Client
+	apiURL     string
 
 	// Auth tokens are at most 64 bytes long and can be passed back instead of username/password
 	// credentials by `auth` parameter. This token is especially good for setting the `auth` cookie
@@ -21,14 +25,15 @@ type Client struct {
 }
 
 // NewClient creates a new initialised pCloud Client.
-func NewClient() *Client {
+func NewClient(c *http.Client) *Client {
 	return &Client{
-		apiURL: "eapi.pcloud.com", // TODO: have a retry strategy that sets the URL when logon is successful with one of the datacentres (US or EU)
+		httpClient: c,
+		apiURL:     "eapi.pcloud.com", // TODO: have a retry strategy that sets the URL when logon is successful with one of the datacentres (US or EU)
 	}
 }
 
-// request executes an HTTPS (enforced) request to the pCloud API endpoint.
-func (c *Client) request(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
+// get executes an HTTPS (enforced) request to the pCloud API endpoint.
+func (c *Client) do(ctx context.Context, method string, endpoint string, query url.Values, data []byte) ([]byte, error) {
 	if c.auth != "" {
 		query.Add("auth", c.auth)
 	}
@@ -40,14 +45,29 @@ func (c *Client) request(ctx context.Context, endpoint string, query url.Values)
 		RawQuery: query.Encode(),
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(data))
 	if err != nil {
-		return nil, errors.Wrap(err, "http request")
+		return nil, errors.Wrapf(err, "http request: %s", method)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	req.Header.Add("Connection", "Keep-Alive")
+	// req.Header.Add("Keep-Alive", "timeout=600, max=1000")
+	// if method == http.MethodPut {
+	// 	req.Header.Add("Content-Type", "application/octet-stream")
+	// }
+
+	resp, err := c.httpClient.Do(req)
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() {
+			_, err = io.Copy(ioutil.Discard, resp.Body)
+			if err != nil {
+				fmt.Println("error discarding remainder of response body:", err.Error())
+			}
+			err = resp.Body.Close()
+			if err != nil {
+				fmt.Println("error closing the response body:", err.Error())
+			}
+		}()
 	}
 	if err != nil {
 		return nil, errors.Wrap(err, "http Do")
@@ -63,6 +83,16 @@ func (c *Client) request(ctx context.Context, endpoint string, query url.Values)
 	}
 
 	return body, nil
+}
+
+// get executes an HTTPS (enforced) GET to the pCloud API endpoint.
+func (c *Client) get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
+	return c.do(ctx, http.MethodGet, endpoint, query, nil)
+}
+
+// put executes an HTTPS (enforced) PUT to the pCloud API endpoint.
+func (c *Client) put(ctx context.Context, endpoint string, query url.Values, data []byte) ([]byte, error) {
+	return c.do(ctx, http.MethodPut, endpoint, query, data)
 }
 
 type result struct {
@@ -106,4 +136,16 @@ func parseResult(body []byte, err error, r resulter) error {
 		return errors.Errorf("error %d: %s", r.Result_(), r.Error_())
 	}
 	return nil
+}
+
+// toQuery create a blank url.Value object for use as a query with an HTTPS request.
+// It applies the options specified by opts to it and returns it.
+func toQuery(opts ...ClientOption) url.Values {
+	q := url.Values{}
+
+	for _, opt := range opts {
+		opt(&q)
+	}
+
+	return q
 }

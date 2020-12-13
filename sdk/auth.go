@@ -28,7 +28,7 @@ func (c *Client) Login(ctx context.Context, opts ...ClientOption) error {
 
 	ui := &UserInfo{}
 
-	err := parseAPIOutput(ui)(c.request(ctx, "userinfo", q))
+	err := parseAPIOutput(ui)(c.get(ctx, "userinfo", q))
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (c *Client) Logout(ctx context.Context, opts ...ClientOption) (*LogoutResul
 
 	lr := &LogoutResult{}
 
-	err := parseAPIOutput(lr)(c.request(ctx, "logout", q))
+	err := parseAPIOutput(lr)(c.get(ctx, "logout", q))
 	if err != nil {
 		return nil, err
 	}
