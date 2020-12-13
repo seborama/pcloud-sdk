@@ -3,6 +3,7 @@ package sdk_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"seborama/pcloud/sdk"
 	"sync"
@@ -14,7 +15,20 @@ func TestMain(m *testing.M) {
 	exitVal := 0
 
 	func() {
-		initAuthenticatedClient()
+		c := &http.Client{
+			Transport: &http.Transport{
+				MaxIdleConnsPerHost:   1,
+				MaxConnsPerHost:       1,
+				ResponseHeaderTimeout: 20 * time.Second,
+				// Proxy:           http.ProxyFromEnvironment,
+				// TLSClientConfig: &tls.Config{
+				// InsecureSkipVerify: true, // only use this for debugging environments
+				// },
+			},
+			Timeout: 0,
+		}
+
+		initAuthenticatedClient(c)
 		defer logoutClient()
 
 		exitVal = m.Run()
@@ -26,7 +40,7 @@ func TestMain(m *testing.M) {
 var pcc *sdk.Client
 var lock sync.Mutex
 
-func initAuthenticatedClient() {
+func initAuthenticatedClient(c *http.Client) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -41,7 +55,7 @@ func initAuthenticatedClient() {
 		panic("invalid credentials - please see README.md")
 	}
 
-	pccTry := sdk.NewClient()
+	pccTry := sdk.NewClient(c)
 
 	err := pccTry.Login(
 		context.Background(),
