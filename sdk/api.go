@@ -27,8 +27,8 @@ func NewClient() *Client {
 	}
 }
 
-// request executes an HTTPS (enforced) request to the pCloud API endpoint.
-func (c *Client) request(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
+// get executes an HTTPS (enforced) request to the pCloud API endpoint.
+func (c *Client) do(ctx context.Context, method string, endpoint string, query url.Values, data []byte) ([]byte, error) {
 	if c.auth != "" {
 		query.Add("auth", c.auth)
 	}
@@ -40,9 +40,9 @@ func (c *Client) request(ctx context.Context, endpoint string, query url.Values)
 		RawQuery: query.Encode(),
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "http request")
+		return nil, errors.Wrapf(err, "http request: %s", method)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -63,6 +63,16 @@ func (c *Client) request(ctx context.Context, endpoint string, query url.Values)
 	}
 
 	return body, nil
+}
+
+// get executes an HTTPS (enforced) GET to the pCloud API endpoint.
+func (c *Client) get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
+	return c.do(ctx, http.MethodGet, endpoint, query, nil)
+}
+
+// put executes an HTTPS (enforced) PUT to the pCloud API endpoint.
+func (c *Client) put(ctx context.Context, endpoint string, query url.Values, data []byte) ([]byte, error) {
+	return c.do(ctx, http.MethodPut, endpoint, query, data)
 }
 
 type result struct {
@@ -106,4 +116,16 @@ func parseResult(body []byte, err error, r resulter) error {
 		return errors.Errorf("error %d: %s", r.Result_(), r.Error_())
 	}
 	return nil
+}
+
+// toQuery create a blank url.Value object for use as a query with an HTTPS request.
+// It applies the options specified by opts to it and returns it.
+func toQuery(opts ...ClientOption) url.Values {
+	q := url.Values{}
+
+	for _, opt := range opts {
+		opt(&q)
+	}
+
+	return q
 }

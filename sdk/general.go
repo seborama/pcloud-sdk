@@ -2,7 +2,8 @@ package sdk
 
 import (
 	"context"
-	"net/url"
+	"fmt"
+	"time"
 )
 
 // UserInfo contains properties about a user account.
@@ -66,16 +67,19 @@ type APIServer struct {
 	API    []string
 }
 
-// toQuery create a blank url.Value object for use as a query with an HTTPS request.
-// It applies the options specified by opts to it and returns it.
-func toQuery(opts ...ClientOption) url.Values {
-	q := url.Values{}
+// DiffResult is returned by diff.
+type DiffResult struct {
+	result
+	DiffID  uint64
+	Entries []Entry
+}
 
-	for _, opt := range opts {
-		opt(&q)
-	}
-
-	return q
+// Entry is a component of DiffResult which is returned by diff.
+type Entry struct {
+	Event    Event
+	Time     APITime
+	DiffID   uint64
+	Metadata Metadata
 }
 
 // UserInfo returns information about the current user.
@@ -88,12 +92,75 @@ func (c *Client) UserInfo(ctx context.Context, opts ...ClientOption) (*UserInfo,
 	q.Add("getregistrationinfo", "1")
 	q.Add("getapiserver", "1")
 
-	ui := &UserInfo{}
+	e := &UserInfo{}
 
-	err := parseAPIOutput(ui)(c.request(ctx, "userinfo", q))
+	err := parseAPIOutput(e)(c.get(ctx, "userinfo", q))
 	if err != nil {
 		return nil, err
 	}
 
-	return ui, nil
+	return e, nil
+}
+
+// Diff lists updates of the user's folders/files.
+// Optionally, takes the parameter diffid, which if provided returns only changes since that
+// diffid.
+// Alternatively you can provide date/time in after parameter and you will only receive events
+// generated after that time.
+// Another alternative to providing diffid or after is providing last, which will return last
+// number of events with highest diffids (that is the last events).
+// Especially setting last to 0 is optimized to do nothing more than return the last diffid.
+// If the optional parameter block is set and there are no changes since the provided diffid,
+// the connection will block until an event arrives. Blocking only works when diffid is provided
+// and does not work with either after or last.
+// However, sending any additional data on the blocked connection will unblock the request and
+// an empty set will be returned. This is useful when you want to monitor for updates when idle
+// and use connection for other activities when needed.
+// Just keep in mind that if you send any request on a connection that is blocked, you will
+// receive two replies - one with empty set of updates and one answering your second request.
+// If the optional limit parameter is provided, no more than limit entries will be returned.
+// IMPORTANT When a folder/file is created/delete/moved in or out of a folder, you are supposed
+// to update modification time of the parent folder to the timestamp of the event.
+// IMPORTANT If your state is more than 6 months old, you are advised to re-download all your
+// state again, as we reserve the right to compact data that is more than 6 months old.
+// Compacting means that if a deletefolder/deletefile event is more than 6 month old, it will
+// disappear altogether with all create/modify events. Also, if modifyfile is more than 6 months
+// old, it can become createfile and the original createfile will disappear. That is not
+// comprehensive list of compacting activities, so you should generally re-download from zero
+// rather than trying to cope with compacting.
+// https://docs.pcloud.com/methods/general/diff.html
+////////////////////////////////
+// TODO: add support for shares.
+////////////////////////////////
+func (c *Client) Diff(ctx context.Context, diffID uint64, after time.Time, last uint64, block bool, limit uint64, opts ...ClientOption) (*DiffResult, error) {
+	q := toQuery(opts...)
+
+	if diffID > 0 {
+		q.Add("diffid", fmt.Sprintf("%d", diffID))
+	}
+
+	if !after.IsZero() {
+		q.Add("after", after.Format(ctLayout))
+	}
+
+	if last > 0 {
+		q.Add("last", fmt.Sprintf("%d", last))
+	}
+
+	if block {
+		q.Add("block", "1")
+	}
+
+	if limit > 0 {
+		q.Add("limit", fmt.Sprintf("%d", limit))
+	}
+
+	dr := &DiffResult{}
+
+	err := parseAPIOutput(dr)(c.get(ctx, "diff", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return dr, nil
 }

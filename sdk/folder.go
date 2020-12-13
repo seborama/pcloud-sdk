@@ -19,7 +19,7 @@ type Metadata struct {
 	// Generic
 	Name           string
 	Created        *APITime
-	IsMine         bool // When true, there are more fields available. See: https://github.com/pcloudcom/pclouddoc/blob/master/api.txt
+	IsMine         bool // TODO: when true, there are more fields available. See: https://github.com/pcloudcom/pclouddoc/blob/master/api.txt
 	Thumb          bool
 	Modified       *APITime
 	Comments       uint64
@@ -48,14 +48,6 @@ type DeleteResult struct {
 	DeletedFolders uint64
 }
 
-// fromBool convert a boolean to a value (it may be any) when true or an empty string otherwise.
-func fromBool(b bool) string {
-	if b {
-		return "1"
-	}
-	return ""
-}
-
 // ListFolder receives data for a folder.
 // Expects folderid or path parameter, returns folder's metadata.
 // The metadata will have contents field that is array of metadatas of folder's contents.
@@ -69,14 +61,26 @@ func (c *Client) ListFolder(ctx context.Context, path string, folderID uint64, r
 	} else {
 		q.Add("folderid", fmt.Sprintf("%d", folderID))
 	}
-	q.Add("recursive", fromBool(recursiveOpt))
-	q.Add("showdeleted", fromBool(showDeletedOpt))
-	q.Add("nofiles", fromBool(noFilesOpt))
-	q.Add("noshares", fromBool(noSharesOpt))
+
+	if recursiveOpt {
+		q.Add("recursive", "1")
+	}
+
+	if showDeletedOpt {
+		q.Add("showdeleted", "1")
+	}
+
+	if noFilesOpt {
+		q.Add("nofiles", "1")
+	}
+
+	if noSharesOpt {
+		q.Add("noshares", "1")
+	}
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "listfolder", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "listfolder", q))
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +103,7 @@ func (c *Client) CreateFolder(ctx context.Context, path string, folderID uint64,
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "createfolder", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "createfolder", q))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +127,7 @@ func (c *Client) CreateFolderIfNotExists(ctx context.Context, path string, folde
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "createfolderifnotexists", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "createfolderifnotexists", q))
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +150,7 @@ func (c *Client) DeleteFolderRecursive(ctx context.Context, path string, folderI
 
 	dr := &DeleteResult{}
 
-	err := parseAPIOutput(dr)(c.request(ctx, "deletefolderrecursive", q))
+	err := parseAPIOutput(dr)(c.get(ctx, "deletefolderrecursive", q))
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +173,7 @@ func (c *Client) DeleteFolder(ctx context.Context, path string, folderID uint64,
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "deletefolder", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "deletefolder", q))
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +203,7 @@ func (c *Client) RenameFolder(ctx context.Context, path string, folderID uint64,
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "renamefolder", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "renamefolder", q))
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +230,7 @@ func (c *Client) CopyFolder(ctx context.Context, path string, folderID uint64, t
 
 	lf := &ListFolder{}
 
-	err := parseAPIOutput(lf)(c.request(ctx, "copyfolder", q))
+	err := parseAPIOutput(lf)(c.get(ctx, "copyfolder", q))
 	if err != nil {
 		return nil, err
 	}
