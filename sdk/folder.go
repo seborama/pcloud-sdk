@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+// RootFolderID is the folderID of the root folder (i.e. '/').
+const RootFolderID = uint64(0)
+
 // ListFolder contains the properties returned by several folder-operating APIs such as:
 // CreeateFolder, DeleteFolder, ListFolder, etc.
 type ListFolder struct {

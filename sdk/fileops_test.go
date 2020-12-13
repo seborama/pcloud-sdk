@@ -2,12 +2,41 @@ package sdk_test
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"seborama/pcloud/sdk"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_Exploratory(t *testing.T) {
+	c := &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConns:          1,
+			MaxIdleConnsPerHost:   1,
+			DisableKeepAlives:     false,
+			MaxConnsPerHost:       1,
+			IdleConnTimeout:       60 * time.Second,
+			ResponseHeaderTimeout: 15 * time.Second,
+		},
+		Timeout: 10 * time.Second,
+	}
+
+	u, err := url.Parse("https://eapi.pcloud.com")
+	require.NoError(t, err)
+
+	q, err := url.ParseQuery("")
+	require.NoError(t, err)
+
+	u.RawQuery = q.Encode()
+
+	r, err := c.Get(u.String())
+	require.NoError(t, err)
+	_ = r
+}
 
 func Test_FileOps_ByPath(t *testing.T) {
 	folderPath := "/go_pCloud_" + uuid.New().String()
@@ -34,11 +63,4 @@ func Test_FileOps_ByPath(t *testing.T) {
 
 func Test_FileOpen_FileClose_ByFileID(t *testing.T) {
 	t.Skip() // not yet written
-	f, err := pcc.FileOpen(context.Background(), 0, "", 0, 0, "Test File 1.pdf")
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, f.FD, uint64(1))
-	require.GreaterOrEqual(t, f.FileID, uint64(1))
-
-	err = pcc.FileClose(context.Background(), f.FD)
-	require.NoError(t, err)
 }
