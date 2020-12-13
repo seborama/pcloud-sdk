@@ -17,17 +17,3 @@ https://docs.pcloud.com
 The tests rely on the presence of two environment variables to supply your credentials:
 - `GO_PCLOUD_USERNAME`
 - `GO_PCLOUD_PASSWORD`
-
-At the moment, tests also require the presence of a folder named `Test` in the root of your pCloud drive, with the following contents:
-
-```
-/Test
-├── Getting\ started\ with\ pCloud.pdf
-└── My\ Folder
-    ├── File 1.pdf
-    └── My Inner Folder
-        ├── File2.pdf
-        └── File3.pdf
-```
-
-The actual contents of the files is currently of no relevance.
