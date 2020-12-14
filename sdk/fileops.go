@@ -68,6 +68,8 @@ func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fil
 	return f, nil
 }
 
+// FileDataTransfer is returned by FileWrite and contains the result and number of
+// bytes transferred.
 type FileDataTransfer struct {
 	result
 	Bytes uint64
