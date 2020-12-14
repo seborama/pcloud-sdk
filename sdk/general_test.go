@@ -1,24 +1,20 @@
 package sdk_test
 
 import (
-	"context"
-	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
-func Test_UserInfo(t *testing.T) {
-	ui, err := pcc.UserInfo(context.Background())
-	require.NoError(t, err)
-	require.NotEmpty(t, ui.APIServer)
-	require.NotEmpty(t, ui.Email)
+func (suite *IntegrationTestSuite) Test_UserInfo() {
+	ui, err := suite.pcc.UserInfo(suite.ctx)
+	suite.Require().NoError(err)
+	suite.Require().NotEmpty(ui.APIServer)
+	suite.Require().NotEmpty(ui.Email)
 }
 
-func Test_Diff(t *testing.T) {
-	dr, err := pcc.Diff(context.Background(), 0, time.Now().Add(-time.Hour), 0, false, 0)
-	require.NoError(t, err)
-	require.GreaterOrEqual(t, dr.DiffID, uint64(1))
-	require.GreaterOrEqual(t, dr.Entries[0].DiffID, uint64(1))
-	require.NotEmpty(t, dr.Entries[0].Metadata.Name)
+func (suite *IntegrationTestSuite) Test_Diff() {
+	dr, err := suite.pcc.Diff(suite.ctx, 0, time.Now().Add(-10*time.Minute), 0, false, 0)
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(dr.DiffID, uint64(1))
+	suite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
+	suite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
 }
