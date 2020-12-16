@@ -180,6 +180,23 @@ func (c *Client) RenameFolder(ctx context.Context, folder T1PathOrFolderID, toFo
 	return lf, nil
 }
 
+// CopyFolder copies a folder identified by folderid or path to either topath or tofolderid.
+// https://docs.pcloud.com/methods/folder/copyfolder.html
+func (c *Client) CopyFolder(ctx context.Context, folder T1PathOrFolderID, toFolder ToT1PathOrFolderID, noOverOpt, skipExisting, copyContentOnly bool, opts ...ClientOption) (*FSList, error) {
+	q := toQuery(opts...)
+	folder(q)
+	toFolder(q)
+
+	lf := &FSList{}
+
+	err := parseAPIOutput(lf)(c.get(ctx, "copyfolder", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return lf, nil
+}
+
 type T1PathOrFolderID func(q url.Values)
 
 func T1FolderByPath(path string) T1PathOrFolderID {
@@ -242,21 +259,4 @@ func ToT2FolderByIDName(folderID uint64, name string) ToT2PathOrFolderIDOrFolder
 		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
 		q.Set("toname", name)
 	}
-}
-
-// CopyFolder copies a folder identified by folderid or path to either topath or tofolderid.
-// https://docs.pcloud.com/methods/folder/copyfolder.html
-func (c *Client) CopyFolder(ctx context.Context, folder T1PathOrFolderID, toFolder ToT1PathOrFolderID, noOverOpt, skipExisting, copyContentOnly bool, opts ...ClientOption) (*FSList, error) {
-	q := toQuery(opts...)
-	folder(q)
-	toFolder(q)
-
-	lf := &FSList{}
-
-	err := parseAPIOutput(lf)(c.get(ctx, "copyfolder", q))
-	if err != nil {
-		return nil, err
-	}
-
-	return lf, nil
 }
