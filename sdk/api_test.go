@@ -78,10 +78,9 @@ func (suite *IntegrationTestSuite) initAuthenticatedClient(c *http.Client) {
 
 func (suite *IntegrationTestSuite) initSuiteTestFolder() {
 	suite.testFolderPath = "/goPCloudSDK_TestFolder_" + uuid.New().String()
-	lf, err := suite.pcc.CreateFolder(suite.ctx, suite.testFolderPath, 0, "")
+	lf, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(suite.testFolderPath))
 	suite.Require().NoError(err)
 	suite.testFolderID = lf.Metadata.FolderID
-
 }
 
 func (suite *IntegrationTestSuite) logout() {
@@ -92,6 +91,6 @@ func (suite *IntegrationTestSuite) logout() {
 }
 
 func (suite *IntegrationTestSuite) deleteSuiteTestFolder() {
-	_, err := suite.pcc.DeleteFolderRecursive(suite.ctx, "", suite.testFolderID)
+	_, err := suite.pcc.DeleteFolderRecursive(suite.ctx, sdk.T1FolderByID(suite.testFolderID))
 	suite.NoError(err)
 }

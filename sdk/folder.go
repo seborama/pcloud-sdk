@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 // RootFolderID is the folderID of the root folder (i.e. '/').
@@ -59,14 +60,9 @@ type DeleteResult struct {
 // The metadata will have contents field that is array of metadatas of folder's contents.
 // Recursively listing the root folder is not an expensive operation.
 // https://docs.pcloud.com/methods/folder/listfolder.html
-func (c *Client) ListFolder(ctx context.Context, path string, folderID uint64, recursiveOpt, showDeletedOpt, noFilesOpt, noSharesOpt bool, opts ...ClientOption) (*FSList, error) {
+func (c *Client) ListFolder(ctx context.Context, folder T1PathOrFolderID, recursiveOpt, showDeletedOpt, noFilesOpt, noSharesOpt bool, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-	}
+	folder(q)
 
 	if recursiveOpt {
 		q.Add("recursive", "1")
@@ -97,15 +93,9 @@ func (c *Client) ListFolder(ctx context.Context, path string, folderID uint64, r
 // CreateFolder creates a folder.
 // Expects either path string parameter (discouraged) or int folderid and string name parameters.
 // https://docs.pcloud.com/methods/folder/createfolder.html
-func (c *Client) CreateFolder(ctx context.Context, path string, folderID uint64, name string, opts ...ClientOption) (*FSList, error) {
+func (c *Client) CreateFolder(ctx context.Context, folder T2PathOrFolderIDName, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-		q.Add("name", name)
-	}
+	folder(q)
 
 	lf := &FSList{}
 
@@ -121,15 +111,9 @@ func (c *Client) CreateFolder(ctx context.Context, path string, folderID uint64,
 // folder's metadata.
 // Expects either path string parameter (discouraged) or int folderid and string name parameters.
 // https://docs.pcloud.com/methods/folder/createfolderifnotexists.html
-func (c *Client) CreateFolderIfNotExists(ctx context.Context, path string, folderID uint64, name string, opts ...ClientOption) (*FSList, error) {
+func (c *Client) CreateFolderIfNotExists(ctx context.Context, folder T2PathOrFolderIDName, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-		q.Add("name", name)
-	}
+	folder(q)
 
 	lf := &FSList{}
 
@@ -145,14 +129,9 @@ func (c *Client) CreateFolderIfNotExists(ctx context.Context, path string, folde
 // Expects either path string parameter (discouraged) or int folderid parameter.
 // Note: This function deletes files, directories, and removes sharing. Use with extreme care.
 // https://docs.pcloud.com/methods/folder/deletefolderrecursive.html
-func (c *Client) DeleteFolderRecursive(ctx context.Context, path string, folderID uint64, opts ...ClientOption) (*DeleteResult, error) {
+func (c *Client) DeleteFolderRecursive(ctx context.Context, folder T1PathOrFolderID, opts ...ClientOption) (*DeleteResult, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-	}
+	folder(q)
 
 	dr := &DeleteResult{}
 
@@ -168,14 +147,9 @@ func (c *Client) DeleteFolderRecursive(ctx context.Context, path string, folderI
 // Expects either path string parameter (discouraged) or int folderid parameter.
 // Note: Folders must be empty before calling deletefolder.
 // https://docs.pcloud.com/methods/folder/deletefolder.html
-func (c *Client) DeleteFolder(ctx context.Context, path string, folderID uint64, opts ...ClientOption) (*FSList, error) {
+func (c *Client) DeleteFolder(ctx context.Context, folder T1PathOrFolderID, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-	}
+	folder(q)
 
 	lf := &FSList{}
 
@@ -191,21 +165,10 @@ func (c *Client) DeleteFolder(ctx context.Context, path string, folderID uint64,
 // topath (if topath is an existing folder, to place the source folder without new name for the
 // folder it MUST end with slash - /newpath/) or tofolderid/toname (one or both can be provided).
 // https://docs.pcloud.com/methods/folder/renamefolder.html
-func (c *Client) RenameFolder(ctx context.Context, path string, folderID uint64, toPath string, toFolderID uint64, toName string, opts ...ClientOption) (*FSList, error) {
+func (c *Client) RenameFolder(ctx context.Context, folder T1PathOrFolderID, toFolder ToT2PathOrFolderIDOrFolderIDName, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-	}
-
-	if toPath != "" {
-		q.Add("topath", toPath)
-	} else {
-		q.Add("tofolderid", fmt.Sprintf("%d", toFolderID))
-		q.Add("toname", toName)
-	}
+	folder(q)
+	toFolder(q)
 
 	lf := &FSList{}
 
@@ -217,22 +180,76 @@ func (c *Client) RenameFolder(ctx context.Context, path string, folderID uint64,
 	return lf, nil
 }
 
+type T1PathOrFolderID func(q url.Values)
+
+func T1FolderByPath(path string) T1PathOrFolderID {
+	return func(q url.Values) {
+		q.Set("path", path)
+	}
+}
+
+func T1FolderByID(folderID uint64) T1PathOrFolderID {
+	return func(q url.Values) {
+		q.Set("folderid", fmt.Sprintf("%d", folderID))
+	}
+}
+
+type T2PathOrFolderIDName func(q url.Values)
+
+func T2FolderByPath(path string) T2PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("path", path)
+	}
+}
+
+func T2FolderByIDName(folderID uint64, name string) T2PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("folderid", fmt.Sprintf("%d", folderID))
+		q.Set("name", name)
+	}
+}
+
+type ToT1PathOrFolderID func(q url.Values)
+
+func ToT1FolderByPath(path string) ToT1PathOrFolderID {
+	return func(q url.Values) {
+		q.Set("topath", path)
+	}
+}
+
+func ToT1FolderByID(folderID uint64) ToT1PathOrFolderID {
+	return func(q url.Values) {
+		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
+	}
+}
+
+type ToT2PathOrFolderIDOrFolderIDName func(q url.Values)
+
+func ToT2FolderByPath(path string) ToT2PathOrFolderIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("topath", path)
+	}
+}
+
+func ToT2FolderByID(folderID uint64) ToT2PathOrFolderIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
+	}
+}
+
+func ToT2FolderByIDName(folderID uint64, name string) ToT2PathOrFolderIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
+		q.Set("toname", name)
+	}
+}
+
 // CopyFolder copies a folder identified by folderid or path to either topath or tofolderid.
 // https://docs.pcloud.com/methods/folder/copyfolder.html
-func (c *Client) CopyFolder(ctx context.Context, path string, folderID uint64, toPath string, toFolderID uint64, noOverOpt, skipExisting, copyContentOnly bool, opts ...ClientOption) (*FSList, error) {
+func (c *Client) CopyFolder(ctx context.Context, folder T1PathOrFolderID, toFolder ToT1PathOrFolderID, noOverOpt, skipExisting, copyContentOnly bool, opts ...ClientOption) (*FSList, error) {
 	q := toQuery(opts...)
-
-	if path != "" {
-		q.Add("path", path)
-	} else {
-		q.Add("folderid", fmt.Sprintf("%d", folderID))
-	}
-
-	if toPath != "" {
-		q.Add("topath", toPath)
-	} else {
-		q.Add("tofolderid", fmt.Sprintf("%d", toFolderID))
-	}
+	folder(q)
+	toFolder(q)
 
 	lf := &FSList{}
 

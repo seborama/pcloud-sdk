@@ -10,11 +10,13 @@ func (suite *IntegrationTestSuite) Test_DeleteFile_ByPath() {
 	folderPath := suite.testFolderPath + "/go_pCloud_" + uuid.New().String()
 	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
 
-	_, err := suite.pcc.CreateFolder(suite.ctx, folderPath, 0, "")
+	pathFilename := folderPath + "/" + fileName
+
+	_, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(folderPath))
 	suite.Require().NoError(err)
 
 	// FileOpenByPath
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, folderPath+"/"+fileName, 0, 0, "")
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, pathFilename, 0, 0, "")
 	suite.Require().NoError(err)
 	fileID := f.FileID
 
@@ -32,8 +34,9 @@ func (suite *IntegrationTestSuite) Test_DeleteFile_ByPath() {
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
-	// TODO: add FileDelete (when available)
+	_, err = suite.pcc.DeleteFile(suite.ctx, pathFilename, 0)
+	suite.Require().NoError(err)
 
-	_, err = suite.pcc.DeleteFolderRecursive(suite.ctx, folderPath, 0)
+	_, err = suite.pcc.DeleteFolderRecursive(suite.ctx, sdk.T1FolderByPath(folderPath))
 	suite.Require().NoError(err)
 }

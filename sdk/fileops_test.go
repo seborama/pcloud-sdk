@@ -11,7 +11,7 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	folderPath := suite.testFolderPath + "/go_pCloud_" + uuid.New().String()
 	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
 
-	_, err := suite.pcc.CreateFolder(suite.ctx, folderPath, 0, "")
+	_, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(folderPath))
 	suite.Require().NoError(err)
 
 	// File operations by path
@@ -58,6 +58,6 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)
 
-	// _, err = suite.pcc.DeleteFolderRecursive(suite.ctx, folderPath, 0)
-	// suite.Require().NoError(err)
+	_, err = suite.pcc.DeleteFolderRecursive(suite.ctx, sdk.T1FolderByPath(folderPath))
+	suite.Require().NoError(err)
 }
