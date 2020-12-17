@@ -20,7 +20,7 @@ func (suite *IntegrationTestSuite) Test_GetFileLink() {
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
-	fl, err := suite.pcc.GetFileLink(suite.ctx, suite.testFolderPath+"/"+fileName, 0, true, "", 0, false)
+	fl, err := suite.pcc.GetFileLink(suite.ctx, sdk.T3FileByPath(suite.testFolderPath+"/"+fileName), true, "", 0, false)
 	suite.Require().NoError(err)
 	suite.Require().Equal(0, fl.Result)
 	suite.Require().GreaterOrEqual(len(fl.Path), 10)

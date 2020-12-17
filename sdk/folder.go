@@ -197,28 +197,36 @@ func (c *Client) CopyFolder(ctx context.Context, folder T1PathOrFolderID, toFold
 	return lf, nil
 }
 
+// T1PathOrFolderID is a type of parameters that some of the SDK functions take.
+// Such functions have a diadic aspect to reference a folder: either by path or by folderid.
 type T1PathOrFolderID func(q url.Values)
 
+// T1FolderByPath is a type of T1PathOrFolderID that references a folder by path alone.
 func T1FolderByPath(path string) T1PathOrFolderID {
 	return func(q url.Values) {
 		q.Set("path", path)
 	}
 }
 
+// T1FolderByID is a type of T1PathOrFolderID that references a folder by folderid alone.
 func T1FolderByID(folderID uint64) T1PathOrFolderID {
 	return func(q url.Values) {
 		q.Set("folderid", fmt.Sprintf("%d", folderID))
 	}
 }
 
+// T2PathOrFolderIDName is a type of parameters that some of the SDK functions take.
+// Such functions have a diadic aspect to reference a folder: either by path or by folderid+name.
 type T2PathOrFolderIDName func(q url.Values)
 
+// T2FolderByPath is a type of T2PathOrFolderIDName that references a folder by path alone.
 func T2FolderByPath(path string) T2PathOrFolderIDName {
 	return func(q url.Values) {
 		q.Set("path", path)
 	}
 }
 
+// T2FolderByIDName is a type of T2PathOrFolderIDName that references a folder by folderid+name.
 func T2FolderByIDName(folderID uint64, name string) T2PathOrFolderIDName {
 	return func(q url.Values) {
 		q.Set("folderid", fmt.Sprintf("%d", folderID))
@@ -226,34 +234,48 @@ func T2FolderByIDName(folderID uint64, name string) T2PathOrFolderIDName {
 	}
 }
 
+// ToT1PathOrFolderID is a type of parameters that some of the SDK functions take.
+// It is similar to T1PathOrFolderID but applies when referencing a destination folder.
 type ToT1PathOrFolderID func(q url.Values)
 
+// ToT1FolderByPath is a type of ToT1PathOrFolderID that references a folder by path alone.
 func ToT1FolderByPath(path string) ToT1PathOrFolderID {
 	return func(q url.Values) {
 		q.Set("topath", path)
 	}
 }
 
+// ToT1FolderByID is a type of ToT1PathOrFolderID that references a folder by folderid alone.
 func ToT1FolderByID(folderID uint64) ToT1PathOrFolderID {
 	return func(q url.Values) {
 		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
 	}
 }
 
+// ToT2PathOrFolderIDOrFolderIDName is a type of parameters that some of the SDK functions take.
+// It applies when referencing a destination folder.
+// Functions that use it have a triadic aspect to reference a folder:
+// by path alone, by folderid alone or by folderid+name.
 type ToT2PathOrFolderIDOrFolderIDName func(q url.Values)
 
+// ToT2FolderByPath is a type of ToT2PathOrFolderIDOrFolderIDName that references a folder by
+// path alone.
 func ToT2FolderByPath(path string) ToT2PathOrFolderIDOrFolderIDName {
 	return func(q url.Values) {
 		q.Set("topath", path)
 	}
 }
 
+// ToT2FolderByID is a type of ToT2PathOrFolderIDOrFolderIDName that references a folder by
+// folderid alone.
 func ToT2FolderByID(folderID uint64) ToT2PathOrFolderIDOrFolderIDName {
 	return func(q url.Values) {
 		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
 	}
 }
 
+// ToT2FolderByIDName is a type of ToT2PathOrFolderIDOrFolderIDName that references a folder by
+// folderid+name.
 func ToT2FolderByIDName(folderID uint64, name string) ToT2PathOrFolderIDOrFolderIDName {
 	return func(q url.Values) {
 		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
