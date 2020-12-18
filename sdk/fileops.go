@@ -116,6 +116,7 @@ const (
 	WhenceFromEnd
 )
 
+// FileSeek is returned by the SDK FileSeek() method.
 type FileSeek struct {
 	result
 	Offset uint64

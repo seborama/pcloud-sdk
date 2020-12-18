@@ -16,11 +16,10 @@ type LogoutResult struct {
 	AuthDeleted bool
 }
 
-// Login performs a user login by credentials supplied via opts.
+// LoginV1 performs a user login by credentials supplied via opts.
 // Typically this could be username and password.
 // This is not an SDK method per-se, rather a wrapper around UserInfo.
 // https://docs.pcloud.com/methods/intro/authentication.html
-// TODO: Replace Login with Login2 (and remove Login2)
 func (c *Client) LoginV1(ctx context.Context, opts ...ClientOption) error {
 	if c.auth != "" {
 		return errors.New("Login called while already logged in. Please call Logout first")
@@ -68,6 +67,11 @@ func osID() string {
 	}
 }
 
+// Login performs a user login by credentials supplied via opts.
+// Login will handle two-factor authentication where applicable.
+// Typically this would be by username and password.
+// This is not a documented SDK method.
+// https://docs.pcloud.com/methods/intro/authentication.html
 func (c *Client) Login(ctx context.Context, otpCodeOpt string, opts ...ClientOption) error {
 	if c.auth != "" {
 		return errors.New("Login called while already logged in. Please call Logout first")
