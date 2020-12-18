@@ -1,6 +1,7 @@
 package sdk
 
 // https://github.com/pcloudcom/pclouddoc/blob/master/errors.txt
+// https://docs.pcloud.com/errors/
 const (
 	// ErrLoginRequired is returned when log in required.
 	ErrLoginRequired = 1000
@@ -175,6 +176,7 @@ const (
 	ErrRequestedSpeedLimitTooLow = 2011
 
 	// ErrInvalidCodeProvided is returned when invalid 'code' provided.
+	// This may happen during two-factor authentication.
 	ErrInvalidCodeProvided = 2012
 
 	// ErrEmailAlreadyVerified is returned when email is already verified.
@@ -269,11 +271,19 @@ const (
 	// ErrCannotRenameRootFolder is returned when cannot rename the root folder.
 	ErrCannotRenameRootFolder = 2042
 
-	// ErrCannotMoveFolderToSubfolder is returned when cannot move a folder to a subfolder of itself.
+	// ErrCannotMoveFolderToSubfolder is returned when cannot move a folder to a subfolder of
+	// itself.
 	ErrCannotMoveFolderToSubfolder = 2043
 
 	// ErrVideoLinkForNonVideo is returned when video links can only be generated for videos.
 	ErrVideoLinkForNonVideo = 2044
+
+	// ErrTFAExpiredToken is returned when the two-factor authentication token used for TFA login
+	// has expired.
+	ErrTFAExpiredToken = 2064
+
+	// ErrTFARequired is returned when two-factor authentication is required to login.
+	ErrTFARequired = 2297
 
 	// ErrSSLError is returned when sSL error occured. Check sslerror for more information.
 	ErrSSLError = 3000

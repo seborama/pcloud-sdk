@@ -25,9 +25,11 @@ https://docs.pcloud.com
 The tests rely on the presence of two environment variables to supply your credentials:
 - `GO_PCLOUD_USERNAME`
 - `GO_PCLOUD_PASSWORD`
+- `GO_PCLOUD_TFA_CODE` - BETA. Note that the device is automatically marked as trusted so TFA is not required the next time. You can remove the trust manually in your account security settings.
+
+TFA was possible thanks to [Glib Dzevo](https://github.com/gdzevo) and his [console-client PR](https://github.com/pcloudcom/console-client/pull/94) where I found the info I needed!
 
 ## Limitations
 
-- Not all SDK functions have been implemented but may be in the future
-- 2FA is not in scope for now or perhaps ever - as far as I can tell the SDK does not support it.
-- The crypto folder is not is scope for now or likely ever - as far as I can tell the SDK does not support it.
+- Not all SDK functions have been implemented but may be in the future.
+- The crypto folder is not in scope for now and unlikely to be.

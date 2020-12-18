@@ -63,10 +63,13 @@ func (suite *IntegrationTestSuite) initAuthenticatedClient(c *http.Client) {
 	password := os.Getenv("GO_PCLOUD_PASSWORD")
 	suite.Require().NotEmpty(password)
 
+	otpCode := os.Getenv("GO_PCLOUD_TFA_CODE")
+
 	pcc := sdk.NewClient(c)
 
 	err := pcc.Login(
 		suite.ctx,
+		otpCode,
 		sdk.WithGlobalOptionUsername(username),
 		sdk.WithGlobalOptionPassword(password),
 		sdk.WithGlobalOptionAuthInactiveExpire(5*time.Minute),

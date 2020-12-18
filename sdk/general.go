@@ -36,6 +36,10 @@ type UserInfo struct {
 	RegistrationInfo      RegistrationInfo
 	Journey               Journey
 	APIServer             APIServer
+	PrivateSHA1           string
+	PublicSHA1            string
+	IsTwoFactorAuthActive bool
+	Token                 string // this is used with two-factor authentication (perhaps OAUTH2 journeys too?)
 }
 
 // RegistrationInfo contains registration information about a user account.
