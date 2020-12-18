@@ -35,21 +35,21 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 
 	// copy original file to "* COPY", for use by "File operations by id", below
-	cf, err := suite.pcc.CopyFile(suite.ctx, folderPath+"/"+fileName, 0, folderPath+"/"+fileName+" COPY", 0, "", true, time.Time{}, time.Time{})
+	cf, err := suite.pcc.CopyFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName), sdk.ToT3ByPath(folderPath+"/"+fileName+" COPY"), true, time.Time{}, time.Time{})
 	suite.Require().NoError(err)
 	cFileID := cf.Metadata.FileID
 
 	// copy original file to "* COPY2"
-	cf2, err := suite.pcc.CopyFile(suite.ctx, folderPath+"/"+fileName, 0, folderPath+"/"+fileName+" COPY2", 0, "", true, time.Time{}, time.Time{})
+	cf2, err := suite.pcc.CopyFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName), sdk.ToT3ByPath(folderPath+"/"+fileName+" COPY2"), true, time.Time{}, time.Time{})
 	suite.Require().NoError(err)
 	cFileID2 := cf2.Metadata.FileID
 
 	// rename original file to "* COPY2" (i.e. overwrite operation)
-	rf, err := suite.pcc.RenameFile(suite.ctx, folderPath+"/"+fileName, 0, folderPath+"/"+fileName+" COPY2", 0, "")
+	rf, err := suite.pcc.RenameFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName), sdk.ToT3ByPath(folderPath+"/"+fileName+" COPY2"))
 	suite.Require().NoError(err)
 	suite.Equal(cFileID2, rf.Metadata.DeletedFileID)
 
-	df, err := suite.pcc.DeleteFile(suite.ctx, folderPath+"/"+fileName+" COPY2", 0)
+	df, err := suite.pcc.DeleteFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName+" COPY2"))
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)
 
@@ -60,10 +60,10 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
-	rf, err = suite.pcc.RenameFile(suite.ctx, "", cFileID, "", suite.testFolderID, fileName+" RENAMED BY ID")
+	rf, err = suite.pcc.RenameFile(suite.ctx, sdk.T3FileByID(cFileID), sdk.ToT3ByIDName(suite.testFolderID, fileName+" RENAMED BY ID"))
 	suite.Require().NoError(err)
 
-	df, err = suite.pcc.DeleteFile(suite.ctx, "", cFileID)
+	df, err = suite.pcc.DeleteFile(suite.ctx, sdk.T3FileByID(cFileID))
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)
 

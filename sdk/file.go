@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 )
 
@@ -16,14 +17,9 @@ type FileResult struct {
 
 // DeleteFile deletes a file identified by fileid or path.
 // https://docs.pcloud.com/methods/file/deletefile.html
-func (c *Client) DeleteFile(ctx context.Context, pathOpt string, fileIDOpt uint64, opts ...ClientOption) (*FileResult, error) {
+func (c *Client) DeleteFile(ctx context.Context, file T3PathOrFileID, opts ...ClientOption) (*FileResult, error) {
 	q := toQuery(opts...)
-
-	if pathOpt != "" {
-		q.Add("path", pathOpt)
-	} else if fileIDOpt != 0 {
-		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
-	}
+	file(q)
 
 	r := &FileResult{}
 
@@ -35,6 +31,29 @@ func (c *Client) DeleteFile(ctx context.Context, pathOpt string, fileIDOpt uint6
 	return r, nil
 }
 
+// ToT3PathOrFolderIDName is a type of parameters that some of the SDK functions take.
+// It applies when referencing a destination folder.
+// Functions that use it have a diadic aspect to reference a folder:
+// by path alone or by folderid+name.
+type ToT3PathOrFolderIDName func(q url.Values)
+
+// ToT3ByPath is a type of ToT3PathOrFolderIDName that references a folder (must end with '/')
+// or afile, by path alone.
+func ToT3ByPath(path string) ToT3PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("topath", path)
+	}
+}
+
+// ToT3ByIDName is a type of ToT3PathOrFolderIDName that references a file by
+// folderid+name or, if name is empty, a folder.
+func ToT3ByIDName(folderID uint64, name string) ToT3PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
+		q.Set("toname", name)
+	}
+}
+
 // RenameFile renames a file identified by fileid or path.
 // Renames (and/or moves) a file identified by fileid or path to either topath (if topath is a
 // foldername without new filename it MUST end with slash - /newpath/) or tofolderid/toname
@@ -43,21 +62,10 @@ func (c *Client) DeleteFile(ctx context.Context, pathOpt string, fileIDOpt uint6
 // in this case the metadata will include deletedfileid with the fileid of the old file at the
 // destination, and the source and destination files revisions will be merged together.
 // https://docs.pcloud.com/methods/file/renamefile.html
-func (c *Client) RenameFile(ctx context.Context, pathOpt string, fileIDOpt uint64, toPathOpt string, toFolderID uint64, toName string, opts ...ClientOption) (*FileResult, error) {
+func (c *Client) RenameFile(ctx context.Context, file T3PathOrFileID, destination ToT3PathOrFolderIDName, opts ...ClientOption) (*FileResult, error) {
 	q := toQuery(opts...)
-
-	if pathOpt != "" {
-		q.Add("path", pathOpt)
-	} else if fileIDOpt != 0 {
-		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
-	}
-
-	if toPathOpt != "" {
-		q.Add("topath", toPathOpt)
-	} else {
-		q.Add("tofolderid", fmt.Sprintf("%d", toFolderID))
-		q.Add("toname", toName)
-	}
+	file(q)
+	destination(q)
 
 	r := &FileResult{}
 
@@ -81,23 +89,10 @@ func (c *Client) RenameFile(ctx context.Context, pathOpt string, fileIDOpt uint6
 // with you).
 // If ctime is set, file created time is set. It's required to provide mtime to set ctime.
 // https://docs.pcloud.com/methods/file/copyfile.html
-func (c *Client) CopyFile(ctx context.Context, pathOpt string, fileIDOpt uint64, toPathOpt string, toFolderID uint64, toNameOpt string, noOverOpt bool, mTime, cTime time.Time, opts ...ClientOption) (*FileResult, error) {
+func (c *Client) CopyFile(ctx context.Context, file T3PathOrFileID, destination ToT3PathOrFolderIDName, noOverOpt bool, mTime, cTime time.Time, opts ...ClientOption) (*FileResult, error) {
 	q := toQuery(opts...)
-
-	if pathOpt != "" {
-		q.Add("path", pathOpt)
-	} else if fileIDOpt != 0 {
-		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
-	}
-
-	if toPathOpt != "" {
-		q.Add("topath", toPathOpt)
-	} else {
-		q.Add("tofolderid", fmt.Sprintf("%d", toFolderID))
-		if toNameOpt != "" {
-			q.Add("toname", toNameOpt)
-		}
-	}
+	file(q)
+	destination(q)
 
 	if noOverOpt {
 		q.Add("noover", "1")
