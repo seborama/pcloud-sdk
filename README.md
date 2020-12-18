@@ -32,4 +32,4 @@ TFA was possible thanks to [Glib Dzevo](https://github.com/gdzevo) and his [cons
 ## Limitations
 
 - Not all SDK functions have been implemented but may be in the future.
-- The crypto folder is not in scope for now and unlikely to be.
+- The crypto folder is not in scope for now and unlikely to be. Happy to receive a PR 😀
