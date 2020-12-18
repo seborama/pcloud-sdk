@@ -77,3 +77,31 @@ func T3FileByID(fileID uint64) T3PathOrFileID {
 		q.Set("fileid", fmt.Sprintf("%d", fileID))
 	}
 }
+
+// T4PathOrFileIDOrFolderIDName is a type of parameters that some of the SDK functions take.
+// Such functions have a triadic aspect to reference a file:
+// by path, by fileid or by folderid and (file) name.
+type T4PathOrFileIDOrFolderIDName func(q url.Values)
+
+// T4FileByPath is a type of T4PathOrFileIDOrFolderIDName that references a file by path alone.
+func T4FileByPath(path string) T4PathOrFileIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("path", path)
+	}
+}
+
+// T4FileByID is a type of T4PathOrFileIDOrFolderIDName that references a file by path alone.
+func T4FileByID(fileID uint64) T4PathOrFileIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("fileid", fmt.Sprintf("%d", fileID))
+	}
+}
+
+// T4FileByFolderIDName is a type of T4PathOrFileIDOrFolderIDName that references a file
+// by folderid and (file) name (within the folder).
+func T4FileByFolderIDName(folderID uint64, name string) T4PathOrFileIDOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("folderid", fmt.Sprintf("%d", folderID))
+		q.Set("name", name)
+	}
+}

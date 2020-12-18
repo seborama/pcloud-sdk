@@ -1,6 +1,7 @@
 package sdk_test
 
 import (
+	"math"
 	"seborama/pcloud/sdk"
 	"time"
 
@@ -15,12 +16,20 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 
 	// File operations by path
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, folderPath+"/"+fileName, 0, 0, "")
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(folderPath+"/"+fileName))
 	suite.Require().NoError(err)
 
 	fdt, err := suite.pcc.FileWrite(suite.ctx, f.FD, []byte(Lipsum))
 	suite.Require().NoError(err)
 	suite.Require().EqualValues(len(Lipsum), fdt.Bytes)
+
+	fs, err := suite.pcc.FileSeek(suite.ctx, f.FD, 0, sdk.WhenceFromBeginning)
+	suite.Require().NoError(err)
+	suite.Require().Zero(fs.Offset)
+
+	data, err := suite.pcc.FileRead(suite.ctx, f.FD, math.MaxInt64)
+	suite.Require().NoError(err)
+	suite.Require().EqualValues(Lipsum, data)
 
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
@@ -45,7 +54,7 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.True(df.Metadata.IsDeleted)
 
 	// File operations by id
-	f, err = suite.pcc.FileOpen(suite.ctx, 0, "", cFileID, 0, "")
+	f, err = suite.pcc.FileOpen(suite.ctx, 0, sdk.T4FileByID(cFileID))
 	suite.Require().NoError(err)
 
 	err = suite.pcc.FileClose(suite.ctx, f.FD)

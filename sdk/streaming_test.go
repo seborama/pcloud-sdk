@@ -10,7 +10,7 @@ import (
 func (suite *IntegrationTestSuite) Test_GetFileLink() {
 	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
 
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, suite.testFolderPath+"/"+fileName, 0, 0, "")
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(suite.testFolderPath+"/"+fileName))
 	suite.Require().NoError(err)
 
 	fdt, err := suite.pcc.FileWrite(suite.ctx, f.FD, []byte(Lipsum))

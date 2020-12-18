@@ -40,23 +40,11 @@ const (
 
 // FileOpen opens a file descriptor.
 // https://docs.pcloud.com/methods/fileops/file_open.html
-func (c *Client) FileOpen(ctx context.Context, flags uint64, pathOpt string, fileIDOpt uint64, folderIDOpt uint64, nameOpt string, opts ...ClientOption) (*File, error) {
+func (c *Client) FileOpen(ctx context.Context, flags uint64, file T4PathOrFileIDOrFolderIDName, opts ...ClientOption) (*File, error) {
 	q := toQuery(opts...)
+	file(q)
 
 	q.Add("flags", fmt.Sprintf("%d", flags))
-
-	if pathOpt != "" {
-		q.Add("path", pathOpt)
-	}
-
-	if fileIDOpt != 0 {
-		q.Add("fileid", fmt.Sprintf("%d", fileIDOpt))
-	}
-
-	q.Add("folderid", fmt.Sprintf("%d", folderIDOpt))
-	if nameOpt != "" {
-		q.Add("name", nameOpt)
-	}
 
 	f := &File{}
 
@@ -92,6 +80,69 @@ func (c *Client) FileWrite(ctx context.Context, fd uint64, data []byte, opts ...
 	}
 
 	return fdt, nil
+}
+
+// FileRead tries to read at most count bytes at the current offset of the file.
+// If currentofset+count<=filesize this method will satisfy the request and read count bytes,
+// otherwise it will return just the bytes available (this is the only way to discover the EOF
+// condition).
+// You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
+// https://docs.pcloud.com/methods/fileops/file_read.html
+func (c *Client) FileRead(ctx context.Context, fd uint64, count uint64, opts ...ClientOption) ([]byte, error) {
+	q := toQuery(opts...)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+	q.Add("count", fmt.Sprintf("%d", count))
+
+	data, err := c.get(ctx, "file_read", q)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// Whence defines from where an offset applies when seeking a file position.
+type Whence int8
+
+const (
+	// WhenceFromBeginning moves offset from beginning of the file.
+	WhenceFromBeginning Whence = iota
+
+	// WhenceFromCurrent moves offset from current position in file.
+	WhenceFromCurrent
+
+	// WhenceFromEnd moves offset from end of file.
+	WhenceFromEnd
+)
+
+type FileSeek struct {
+	result
+	Offset uint64
+}
+
+// FileSeek sets the current offset of the file descriptor to offset bytes.
+// This method works in the following modes, depending on the whence parameter:
+// whence	Description
+// 0        moves after beginning of the file
+// 1        after current position
+// 2        after end of the file.
+// https://docs.pcloud.com/methods/fileops/file_seek.html
+func (c *Client) FileSeek(ctx context.Context, fd uint64, offset uint64, whenceOpt Whence, opts ...ClientOption) (*FileSeek, error) {
+	q := toQuery(opts...)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+	q.Add("offset", fmt.Sprintf("%d", offset))
+	q.Add("whence", fmt.Sprintf("%d", whenceOpt))
+
+	fs := &FileSeek{}
+
+	err := parseAPIOutput(fs)(c.get(ctx, "file_seek", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return fs, nil
 }
 
 // FileClose closes a file descriptor.

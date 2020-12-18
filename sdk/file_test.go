@@ -16,7 +16,7 @@ func (suite *IntegrationTestSuite) Test_DeleteFile_ByPath() {
 	suite.Require().NoError(err)
 
 	// FileOpenByPath
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, pathFilename, 0, 0, "")
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(pathFilename))
 	suite.Require().NoError(err)
 	fileID := f.FileID
 
@@ -28,7 +28,7 @@ func (suite *IntegrationTestSuite) Test_DeleteFile_ByPath() {
 	suite.Require().NoError(err)
 
 	// FileOpenByID
-	f, err = suite.pcc.FileOpen(suite.ctx, 0, "", fileID, 0, "")
+	f, err = suite.pcc.FileOpen(suite.ctx, 0, sdk.T4FileByID(fileID))
 	suite.Require().NoError(err)
 
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
