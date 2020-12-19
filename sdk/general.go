@@ -95,6 +95,7 @@ func (c *Client) UserInfo(ctx context.Context, opts ...ClientOption) (*UserInfo,
 
 	q.Add("getregistrationinfo", "1")
 	q.Add("getapiserver", "1")
+	q.Add("cryptokeyssign", "1")
 
 	e := &UserInfo{}
 

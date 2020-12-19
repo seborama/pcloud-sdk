@@ -49,7 +49,7 @@ func deviceID() string {
 	}
 	hostname = strings.Title(hostname)
 	sysOS := strings.Title(runtime.GOOS)
-	sysArch := strings.Title(runtime.GOARCH)
+	sysArch := strings.ToLower(runtime.GOARCH)
 
 	return fmt.Sprintf("%s, %s, %s, go pCloud SDK", hostname, sysOS, sysArch)
 }
@@ -82,8 +82,6 @@ func (c *Client) Login(ctx context.Context, otpCodeOpt string, opts ...ClientOpt
 
 	q.Add("getauth", "1")
 	q.Add("logout", "1")
-	q.Add("cryptokeyssign", "1") // TODO: is this needed?
-	// q.Add("getapiserver", "1")
 	q.Add("os", osID())
 	q.Add("device", deviceID()) // TODO: is this needed?
 	q.Add("deviceid", deviceID())

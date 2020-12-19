@@ -61,8 +61,7 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
-	// full file checksum
-	// retry to allow pCloud to sync the changes made so far.
+	// full file checksum - with retry to allow pCloud to sync the changes made so far.
 	for {
 		time.Sleep(500 * time.Millisecond)
 		cs.Reset()

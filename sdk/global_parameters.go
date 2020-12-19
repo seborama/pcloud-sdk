@@ -21,15 +21,19 @@ func WithGlobalOptionID(id string) ClientOption {
 	}
 }
 
-// WithGlobalOptionTimeFormatAsUnixUTCTimestamp if set, all datetime fields will be represented
-// as UTC unix timestamps, otherwise the default date format is used.
+// WithGlobalOptionTimeFormatAsUnixUTCTimestamp DO NOT USE THIS OPTION
+// It is here only to remind me not to implement it :)
+// The reason for not implementing WithGlobalOptionTimeFormatAsUnixUTCTimestamp is that the time
+// format contract is between pCloud's API and this SDK via `sdk.APITime`!!
+// This SDK uses Go's standard `time.Time`. Use `time.Format()`, etc to reformat the time
+// as desired.
+//
 // The default datetime format is Thu, 21 Mar 2013 18:31:45 +0000 (rfc 2822), exactly 31 bytes
 // long.
 // https://docs.pcloud.com/methods/intro/global_parameters.html
 func WithGlobalOptionTimeFormatAsUnixUTCTimestamp() ClientOption {
-	// TODO: this is currently ineffective as it isn't coordinated with `APITime`
 	return func(q *url.Values) {
-		q.Add("timeformat", "timestamp")
+		panic("do not use this option. see comment for `WithGlobalOptionTimeFormatAsUnixUTCTimestamp`")
 	}
 }
 
