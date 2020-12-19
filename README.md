@@ -4,6 +4,10 @@ This is a pCloud client written in Go for cross-platform compatibility, such as 
 
 NOTE: I'm **not** affiliated to pCloud so this project is as good or as bad as it gets.
 
+## Go SDK
+
+See [SDK](sdk/README.md).
+
 ## History
 
 The original driver for this project is to create a pCloud client for my Raspberry Pi4.
@@ -14,9 +18,9 @@ While [pCloud's console client](https://github.com/pcloudcom/console-client) see
 
 The first objective is to implement a Go version of the SDK.
 
-## Documentation
+## API documentation
 
-The official pCloud SDK is documented at:
+The official pCloud API is documented at:
 
 https://docs.pcloud.com
 
