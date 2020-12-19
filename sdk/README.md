@@ -47,7 +47,7 @@
   - invite
   - userinvites
   - ✅ logout
-  - listtokens
+  - ✅ listtokens
   - deletetoken
   - sendchangemail
   - changemail

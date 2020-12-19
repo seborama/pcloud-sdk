@@ -115,7 +115,6 @@ func (c *Client) loginTFA(ctx context.Context, token, otpCode string, opts ...Cl
 
 	q.Add("getauth", "1")
 	q.Add("logout", "1")
-	// q.Add("getapiserver", "1")
 	q.Add("os", osID())
 	q.Add("device", deviceID()) // TODO: is this needed?
 	q.Add("deviceid", deviceID())
@@ -135,7 +134,7 @@ func (c *Client) loginTFA(ctx context.Context, token, otpCode string, opts ...Cl
 	return nil
 }
 
-// Logout Gets a token and invalidates it.
+// Logout gets a token and invalidates it.
 // Returns bool auth_deleted if the token invalidation was successful
 // (token was correct and it was actually invalidated).
 // https://docs.pcloud.com/methods/auth/logout.html
@@ -152,4 +151,34 @@ func (c *Client) Logout(ctx context.Context, opts ...ClientOption) (*LogoutResul
 	c.auth = ""
 
 	return lr, nil
+}
+
+// TokensList is returned by the SDK ListTokens() method.
+type TokensList struct {
+	result
+	Tokens []Token
+}
+
+// Token contains information about a authentication token.
+type Token struct {
+	TokenID         uint64
+	Device          string
+	Created         APITime
+	ExpiresInactive APITime
+	Expires         APITime
+}
+
+// ListTokens gets a list of currently active tokens associated with the current user.
+// https://docs.pcloud.com/methods/auth/listtokens.html
+func (c *Client) ListTokens(ctx context.Context, opts ...ClientOption) (*TokensList, error) {
+	q := toQuery(opts...)
+
+	tl := &TokensList{}
+
+	err := parseAPIOutput(tl)(c.get(ctx, "listtokens", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return tl, nil
 }
