@@ -11,6 +11,15 @@ func (suite *IntegrationTestSuite) Test_UserInfo() {
 	suite.Require().NotEmpty(ui.Email)
 }
 
+func (suite *IntegrationTestSuite) Test_GetFileHistory() {
+	dr, err := suite.pcc.GetFileHistory(suite.ctx, suite.testFileID)
+	suite.Require().NoError(err)
+	suite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
+	suite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
+	suite.Require().EqualValues(suite.testFileID, dr.Entries[0].Metadata.FileID)
+	suite.Require().EqualValues(suite.testFolderID, dr.Entries[0].Metadata.ParentFolderID)
+}
+
 func (suite *IntegrationTestSuite) Test_Diff() {
 	dr, err := suite.pcc.Diff(suite.ctx, 0, time.Now().Add(-10*time.Minute), 0, false, 0)
 	suite.Require().NoError(err)

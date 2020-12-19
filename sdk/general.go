@@ -71,7 +71,7 @@ type APIServer struct {
 	API    []string
 }
 
-// DiffResult is returned by diff.
+// DiffResult is returned by Diff and GetFileHistory.
 type DiffResult struct {
 	result
 	DiffID  uint64
@@ -105,6 +105,24 @@ func (c *Client) UserInfo(ctx context.Context, opts ...ClientOption) (*UserInfo,
 	}
 
 	return e, nil
+}
+
+// GetFileHistory returns the event history of a file identified by fileid.
+// File might be a deleted one. The output format is the same as that of the diff method.
+// https://docs.pcloud.com/methods/general/getfilehistory.html
+func (c *Client) GetFileHistory(ctx context.Context, fileID uint64, opts ...ClientOption) (*DiffResult, error) {
+	q := toQuery(opts...)
+
+	q.Add("fileid", fmt.Sprintf("%d", fileID))
+
+	dr := &DiffResult{}
+
+	err := parseAPIOutput(dr)(c.get(ctx, "getfilehistory", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return dr, nil
 }
 
 // Diff lists updates of the user's folders/files.

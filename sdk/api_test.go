@@ -20,6 +20,7 @@ type IntegrationTestSuite struct {
 
 	testFolderPath string
 	testFolderID   uint64
+	testFileID     uint64
 }
 
 func TestIntegrationSuite(t *testing.T) {
@@ -84,6 +85,13 @@ func (suite *IntegrationTestSuite) initSuiteTestFolder() {
 	lf, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(suite.testFolderPath))
 	suite.Require().NoError(err)
 	suite.testFolderID = lf.Metadata.FolderID
+
+	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT, sdk.T4FileByFolderIDName(suite.testFolderID, "sample.file"))
+	suite.Require().NoError(err)
+	suite.testFileID = f.FileID
+
+	err = suite.pcc.FileClose(suite.ctx, f.FD)
+	suite.Require().NoError(err)
 }
 
 func (suite *IntegrationTestSuite) logout() {

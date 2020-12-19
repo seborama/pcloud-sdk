@@ -16,7 +16,7 @@
   - feedback
   - currentserver
   - ✅ diff
-  - getfilehistory
+  - ✅ getfilehistory
   - getip
   - getapiserver
 - ✅ Folder
