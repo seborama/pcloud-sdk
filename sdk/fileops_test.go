@@ -62,13 +62,22 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 
 	// full file checksum
-	time.Sleep(time.Second) // allow pCloud to sync. if this test fails, it is probably enough to just run it again.
-	cs.Reset()
-	cs.Write([]byte(Lipsum))
-	sha1sum = fmt.Sprintf("%x", cs.Sum(nil))
-	fc, err := suite.pcc.ChecksumFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName))
-	suite.Require().NoError(err)
-	suite.EqualValues(sha1sum, fc.SHA1)
+	// retry to allow pCloud to sync the changes made so far.
+	for {
+		time.Sleep(500 * time.Millisecond)
+		cs.Reset()
+		cs.Write([]byte(Lipsum))
+		sha1sum = fmt.Sprintf("%x", cs.Sum(nil))
+		fc, err := suite.pcc.ChecksumFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName))
+		suite.Require().NoError(err)
+		if uint64(len(Lipsum)) != fc.Metadata.Size {
+			// file changes have not quite yet fully propagated internally in pCloud
+			continue
+		}
+		suite.EqualValues(sha1sum, fc.SHA1)
+		suite.EqualValues(f.FileID, fc.Metadata.FileID)
+		break
+	}
 
 	// copy original file to "* COPY", for use by "File operations by id", below
 	cf, err := suite.pcc.CopyFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName), sdk.ToT3ByPath(folderPath+"/"+fileName+" COPY"), true, time.Time{}, time.Time{})
@@ -86,7 +95,6 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Equal(cFileID2, rf.Metadata.DeletedFileID)
 
 	// delete "* COPY2" file.
-	time.Sleep(time.Second) // allow pCloud to sync. if this test fails, it is probably enough to just run it again.
 	df, err := suite.pcc.DeleteFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName+" COPY2"))
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)
