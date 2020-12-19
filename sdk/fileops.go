@@ -165,6 +165,42 @@ func (c *Client) FilePReadIfMod(ctx context.Context, fd uint64, count, offset ui
 	return data, nil
 }
 
+// FileChecksum is returned by the SDK FileChecksum method.
+type FileChecksum struct {
+	result
+	SHA1 string
+	MD5  string
+	Size uint64
+}
+
+// FileChecksum calculates checksums of count bytes at offset from the file descripor fd.
+//
+// DO NOT use this function to calculate checksums of an ENTIRE, UNMODIFIED file,
+// USE checksumfile INSTEAD.
+//
+// Returns sha1, md5 and size.
+// size will be equal to count unless bytes past current filesize are requested to be
+// checksummed.
+//
+// You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
+// https://docs.pcloud.com/methods/fileops/file_checksum.html
+func (c *Client) FileChecksum(ctx context.Context, fd uint64, count, offset uint64, opts ...ClientOption) (*FileChecksum, error) {
+	q := toQuery(opts...)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+	q.Add("count", fmt.Sprintf("%d", count))
+	q.Add("offset", fmt.Sprintf("%d", offset))
+
+	fc := &FileChecksum{}
+
+	err := parseAPIOutput(fc)(c.get(ctx, "file_checksum", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return fc, nil
+}
+
 // Whence defines from where an offset applies when seeking a file position.
 type Whence int8
 

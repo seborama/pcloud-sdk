@@ -45,6 +45,10 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d: ", sdk.ErrNotModified))
 	suite.Require().Empty(dataPartial)
 
+	fc, err := suite.pcc.FileChecksum(suite.ctx, f.FD, 20, 1000)
+	suite.Require().NoError(err)
+	suite.EqualValues(sha1sum, fc.SHA1)
+
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
