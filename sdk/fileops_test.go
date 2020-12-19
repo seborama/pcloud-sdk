@@ -1,6 +1,8 @@
 package sdk_test
 
 import (
+	"crypto/sha1"
+	"fmt"
 	"math"
 	"seborama/pcloud/sdk"
 	"time"
@@ -31,6 +33,18 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 	suite.Require().EqualValues(Lipsum, data)
 
+	dataPartial, err := suite.pcc.FilePRead(suite.ctx, f.FD, 20, 1000)
+	suite.Require().NoError(err)
+	suite.Require().EqualValues(Lipsum[1000:1020], string(dataPartial))
+
+	cs := sha1.New()
+	cs.Write(dataPartial)
+	sha1sum := fmt.Sprintf("%x", cs.Sum(nil))
+	dataPartial, err = suite.pcc.FilePReadIfMod(suite.ctx, f.FD, 20, 1000, sdk.T5SHA1(sha1sum))
+	suite.Require().Error(err)
+	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d: ", sdk.ErrNotModified))
+	suite.Require().Empty(dataPartial)
+
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
 
@@ -49,6 +63,10 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Require().NoError(err)
 	suite.Equal(cFileID2, rf.Metadata.DeletedFileID)
 
+	// delete "* COPY2" file.
+	// sometimes RenameFile() can be slightly delayed.
+	// if this test fails, it is probably enough to just run it again.
+	time.Sleep(500 * time.Millisecond)
 	df, err := suite.pcc.DeleteFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName+" COPY2"))
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)

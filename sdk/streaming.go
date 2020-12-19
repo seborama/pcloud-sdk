@@ -61,7 +61,7 @@ func (c *Client) GetFileLink(ctx context.Context, file T3PathOrFileID, forceDown
 }
 
 // T3PathOrFileID is a type of parameters that some of the SDK functions take.
-// Such functions have a diadic aspect to reference a file: either by path or by fileid.
+// Such functions have a dichotomic usage to reference a file: either by path or by fileid.
 type T3PathOrFileID func(q url.Values)
 
 // T3FileByPath is a type of T3PathOrFileID that references a file by path alone.
@@ -79,7 +79,7 @@ func T3FileByID(fileID uint64) T3PathOrFileID {
 }
 
 // T4PathOrFileIDOrFolderIDName is a type of parameters that some of the SDK functions take.
-// Such functions have a triadic aspect to reference a file:
+// Such functions have a trichotomic usage to reference a file:
 // by path, by fileid or by folderid and (file) name.
 type T4PathOrFileIDOrFolderIDName func(q url.Values)
 

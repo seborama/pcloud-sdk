@@ -315,7 +315,7 @@ const (
 	// ErrReadError is returned when read error. Try reopening the file.
 	ErrReadError = 5004
 
-	// ErrNotModified is returned when not modified
+	// ErrNotModified is returned when not modified.
 	ErrNotModified = 6000
 
 	// ErrInvalidLinkCode is returned when invalid link 'code'.

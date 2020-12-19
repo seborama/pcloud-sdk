@@ -31,29 +31,6 @@ func (c *Client) DeleteFile(ctx context.Context, file T3PathOrFileID, opts ...Cl
 	return r, nil
 }
 
-// ToT3PathOrFolderIDName is a type of parameters that some of the SDK functions take.
-// It applies when referencing a destination folder.
-// Functions that use it have a diadic aspect to reference a folder:
-// by path alone or by folderid+name.
-type ToT3PathOrFolderIDName func(q url.Values)
-
-// ToT3ByPath is a type of ToT3PathOrFolderIDName that references a folder (must end with '/')
-// or afile, by path alone.
-func ToT3ByPath(path string) ToT3PathOrFolderIDName {
-	return func(q url.Values) {
-		q.Set("topath", path)
-	}
-}
-
-// ToT3ByIDName is a type of ToT3PathOrFolderIDName that references a file by
-// folderid+name or, if name is empty, a folder.
-func ToT3ByIDName(folderID uint64, name string) ToT3PathOrFolderIDName {
-	return func(q url.Values) {
-		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
-		q.Set("toname", name)
-	}
-}
-
 // RenameFile renames a file identified by fileid or path.
 // Renames (and/or moves) a file identified by fileid or path to either topath (if topath is a
 // foldername without new filename it MUST end with slash - /newpath/) or tofolderid/toname
@@ -114,4 +91,27 @@ func (c *Client) CopyFile(ctx context.Context, file T3PathOrFileID, destination 
 	}
 
 	return r, nil
+}
+
+// ToT3PathOrFolderIDName is a type of parameters that some of the SDK functions take.
+// It applies when referencing a destination folder.
+// Functions that use it have a dichotomic usage to reference a folder:
+// by path alone or by folderid+name.
+type ToT3PathOrFolderIDName func(q url.Values)
+
+// ToT3ByPath is a type of ToT3PathOrFolderIDName that references a folder (must end with '/')
+// or afile, by path alone.
+func ToT3ByPath(path string) ToT3PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("topath", path)
+	}
+}
+
+// ToT3ByIDName is a type of ToT3PathOrFolderIDName that references a file by
+// folderid+name or, if name is empty, a folder.
+func ToT3ByIDName(folderID uint64, name string) ToT3PathOrFolderIDName {
+	return func(q url.Values) {
+		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
+		q.Set("toname", name)
+	}
 }

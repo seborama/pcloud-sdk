@@ -198,7 +198,7 @@ func (c *Client) CopyFolder(ctx context.Context, folder T1PathOrFolderID, toFold
 }
 
 // T1PathOrFolderID is a type of parameters that some of the SDK functions take.
-// Such functions have a diadic aspect to reference a folder: either by path or by folderid.
+// Such functions have a dichotomic usage to reference a folder: either by path or by folderid.
 type T1PathOrFolderID func(q url.Values)
 
 // T1FolderByPath is a type of T1PathOrFolderID that references a folder by path alone.
@@ -216,7 +216,8 @@ func T1FolderByID(folderID uint64) T1PathOrFolderID {
 }
 
 // T2PathOrFolderIDName is a type of parameters that some of the SDK functions take.
-// Such functions have a diadic aspect to reference a folder: either by path or by folderid+name.
+// Such functions have a dichotomic usage to reference a folder:
+// either by path or by folderid+name.
 type T2PathOrFolderIDName func(q url.Values)
 
 // T2FolderByPath is a type of T2PathOrFolderIDName that references a folder by path alone.
@@ -254,7 +255,7 @@ func ToT1FolderByID(folderID uint64) ToT1PathOrFolderID {
 
 // ToT2PathOrFolderIDOrFolderIDName is a type of parameters that some of the SDK functions take.
 // It applies when referencing a destination folder.
-// Functions that use it have a triadic aspect to reference a folder:
+// Functions that use it have a trichotomic usage to reference a folder:
 // by path alone, by folderid alone or by folderid+name.
 type ToT2PathOrFolderIDOrFolderIDName func(q url.Values)
 

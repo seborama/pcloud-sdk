@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"net/url"
 )
 
 // File contains properties about an opened file, notably the file descriptor FD.
@@ -94,7 +95,69 @@ func (c *Client) FileRead(ctx context.Context, fd uint64, count uint64, opts ...
 	q.Add("fd", fmt.Sprintf("%d", fd))
 	q.Add("count", fmt.Sprintf("%d", count))
 
-	data, err := c.get(ctx, "file_read", q)
+	data, err := c.binget(ctx, "file_read", q)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// FilePRead tries to read at most count bytes at the given offset of the file.
+// You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
+// offset starts at 0.
+// https://docs.pcloud.com/methods/fileops/file_pread.html
+func (c *Client) FilePRead(ctx context.Context, fd uint64, count, offset uint64, opts ...ClientOption) ([]byte, error) {
+	q := toQuery(opts...)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+	q.Add("count", fmt.Sprintf("%d", count))
+	q.Add("offset", fmt.Sprintf("%d", offset))
+
+	data, err := c.binget(ctx, "file_pread", q)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// T5SHA1OrMD5 is a type of parameters that is used by some of the SDK functions that take
+// a checksum (SHA1 or MD5).
+// Functions that use it have a dichotomic usage to provide a checksum: by SHA1 or MD5.
+type T5SHA1OrMD5 func(q url.Values)
+
+// T5SHA1 is a type of T5SHA1OrMD5 that provides a SHA1 checksum.
+func T5SHA1(sha1 string) T5SHA1OrMD5 {
+	return func(q url.Values) {
+		q.Set("sha1", sha1)
+	}
+}
+
+// T5MD5 is a type of T5SHA1OrMD5 that provides a MD5 checksum.
+func T5MD5(md5 string) T5SHA1OrMD5 {
+	return func(q url.Values) {
+		q.Set("md5", md5)
+	}
+}
+
+// FilePReadIfMod same as file_pread, but additionally expects sha1 or md5 parameter (hex).
+// If the checksum of the data to be read matches the sha1 or md5 checksum, it returns error
+// code 6000 Not modified.
+// This call is useful if the application has the data cached and wants to verify if it still
+// current.
+// offset starts at 0.
+// You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
+// https://docs.pcloud.com/methods/fileops/file_pread_ifmod.html
+func (c *Client) FilePReadIfMod(ctx context.Context, fd uint64, count, offset uint64, checksum T5SHA1OrMD5, opts ...ClientOption) ([]byte, error) {
+	q := toQuery(opts...)
+	checksum(q)
+
+	q.Add("fd", fmt.Sprintf("%d", fd))
+	q.Add("count", fmt.Sprintf("%d", count))
+	q.Add("offset", fmt.Sprintf("%d", offset))
+
+	data, err := c.binget(ctx, "file_pread_ifmod", q)
 	if err != nil {
 		return nil, err
 	}
