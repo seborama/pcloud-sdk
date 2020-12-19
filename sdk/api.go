@@ -54,9 +54,11 @@ func (c *Client) do(ctx context.Context, method string, endpoint string, query u
 
 	req.Header.Add("Connection", "Keep-Alive")
 	// req.Header.Add("Keep-Alive", "timeout=600, max=1000")
-	// if method == http.MethodPut {
-	// 	req.Header.Add("Content-Type", "application/octet-stream")
-	// }
+
+	if method == http.MethodPut {
+		// the content-type must be octet-stream for uploads
+		req.Header.Add("Content-Type", "application/octet-stream")
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if resp != nil {

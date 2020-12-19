@@ -12,7 +12,7 @@ import (
 
 func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	folderPath := suite.testFolderPath + "/go_pCloud_" + uuid.New().String()
-	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
+	fileName := "go_pCloud_" + uuid.New().String() + ".bin"
 
 	_, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(folderPath))
 	suite.Require().NoError(err)
@@ -21,36 +21,54 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(folderPath+"/"+fileName))
 	suite.Require().NoError(err)
 
+	// file write
 	fdt, err := suite.pcc.FileWrite(suite.ctx, f.FD, []byte(Lipsum))
 	suite.Require().NoError(err)
 	suite.Require().EqualValues(len(Lipsum), fdt.Bytes)
 
+	// file offset seek
 	fs, err := suite.pcc.FileSeek(suite.ctx, f.FD, 0, sdk.WhenceFromBeginning)
 	suite.Require().NoError(err)
 	suite.Require().Zero(fs.Offset)
 
+	// file read
 	data, err := suite.pcc.FileRead(suite.ctx, f.FD, math.MaxInt64)
 	suite.Require().NoError(err)
 	suite.Require().EqualValues(Lipsum, data)
 
-	dataPartial, err := suite.pcc.FilePRead(suite.ctx, f.FD, 20, 1000)
+	// partial file read
+	count := uint64(3200)
+	offset := uint64(0)
+	dataPartial, err := suite.pcc.FilePRead(suite.ctx, f.FD, count, offset)
 	suite.Require().NoError(err)
-	suite.Require().EqualValues(Lipsum[1000:1020], string(dataPartial))
+	suite.Require().EqualValues(Lipsum[offset:(offset+count)], string(dataPartial))
 
+	// conditional partial file read
 	cs := sha1.New()
 	cs.Write(dataPartial)
 	sha1sum := fmt.Sprintf("%x", cs.Sum(nil))
-	dataPartial, err = suite.pcc.FilePReadIfMod(suite.ctx, f.FD, 20, 1000, sdk.T5SHA1(sha1sum))
+	dataPartial, err = suite.pcc.FilePReadIfMod(suite.ctx, f.FD, count, offset, sdk.T5SHA1(sha1sum))
 	suite.Require().Error(err)
 	suite.Require().Contains(err.Error(), fmt.Sprintf("error %d: ", sdk.ErrNotModified))
 	suite.Require().Empty(dataPartial)
 
-	fc, err := suite.pcc.FileChecksum(suite.ctx, f.FD, 20, 1000)
+	// partial file checksum
+	pfc, err := suite.pcc.FileChecksum(suite.ctx, f.FD, count, offset)
 	suite.Require().NoError(err)
-	suite.EqualValues(sha1sum, fc.SHA1)
+	suite.EqualValues(sha1sum, pfc.SHA1)
+	suite.EqualValues(pfc.Size, count)
 
 	err = suite.pcc.FileClose(suite.ctx, f.FD)
 	suite.Require().NoError(err)
+
+	// full file checksum
+	time.Sleep(time.Second) // allow pCloud to sync. if this test fails, it is probably enough to just run it again.
+	cs.Reset()
+	cs.Write([]byte(Lipsum))
+	sha1sum = fmt.Sprintf("%x", cs.Sum(nil))
+	fc, err := suite.pcc.ChecksumFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName))
+	suite.Require().NoError(err)
+	suite.EqualValues(sha1sum, fc.SHA1)
 
 	// copy original file to "* COPY", for use by "File operations by id", below
 	cf, err := suite.pcc.CopyFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName), sdk.ToT3ByPath(folderPath+"/"+fileName+" COPY"), true, time.Time{}, time.Time{})
@@ -68,9 +86,7 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 	suite.Equal(cFileID2, rf.Metadata.DeletedFileID)
 
 	// delete "* COPY2" file.
-	// sometimes RenameFile() can be slightly delayed.
-	// if this test fails, it is probably enough to just run it again.
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(time.Second) // allow pCloud to sync. if this test fails, it is probably enough to just run it again.
 	df, err := suite.pcc.DeleteFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName+" COPY2"))
 	suite.Require().NoError(err)
 	suite.True(df.Metadata.IsDeleted)

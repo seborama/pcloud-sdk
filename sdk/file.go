@@ -93,6 +93,37 @@ func (c *Client) CopyFile(ctx context.Context, file T3PathOrFileID, destination 
 	return r, nil
 }
 
+// FileChecksum is returned by the SDK FileChecksum method.
+type FileChecksum struct {
+	result
+	SHA1     string
+	MD5      string
+	SHA256   string
+	Metadata Metadata
+}
+
+// ChecksumFile calculates checksums of a given file.
+// Note that fileid or path could be used at once (at the same time??).
+// Upon success returns metadata.
+// sha1 checksum is returned from both US and Europe API servers.
+// md5 is returned only from US API servers, not added in Europe as it's quite old and has
+// collions.
+// sha256 is returned in Europe only.
+// https://docs.pcloud.com/methods/file/checksumfile.html
+func (c *Client) ChecksumFile(ctx context.Context, file T3PathOrFileID, opts ...ClientOption) (*FileChecksum, error) {
+	q := toQuery(opts...)
+	file(q)
+
+	fc := &FileChecksum{}
+
+	err := parseAPIOutput(fc)(c.get(ctx, "checksumfile", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return fc, nil
+}
+
 // ToT3PathOrFolderIDName is a type of parameters that some of the SDK functions take.
 // It applies when referencing a destination folder.
 // Functions that use it have a dichotomic usage to reference a folder:
