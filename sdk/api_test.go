@@ -52,11 +52,6 @@ func (suite *IntegrationTestSuite) TearDownSuite() {
 	suite.logout()
 }
 
-// func (suite *IntegrationTestSuite) TestSDK() {
-// 	suite.test_UserInfo()
-// 	suite.test_Diff()
-// }
-
 func (suite *IntegrationTestSuite) initAuthenticatedClient(c *http.Client) {
 	username := os.Getenv("GO_PCLOUD_USERNAME")
 	suite.Require().NotEmpty(username)

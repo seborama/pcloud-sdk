@@ -160,6 +160,12 @@ type Checksums struct {
 // If a file with the same name already exists in the directory, it is overwritten and old one
 // is saved as revision. Overwriting a file with the same data does nothing except updating the
 // modification time of the file.
+//
+// files is a map whose keys are filenames (no path as it is specified by `folder`) and values
+// are file descriptors to the corresponding files.
+// IMPORTANT: the file descriptors should be rewinded to the beginning of the file or only the
+// data (if any) from the current position will be uplaoded!
+//
 // https://docs.pcloud.com/methods/file/uploadfile.html
 func (c *Client) UploadFile(ctx context.Context, folder T1PathOrFolderID, files map[string]*os.File, noPartialOpt bool, progressHashOpt string, renameIfExistsOpt bool, mTimeOpt time.Time, cTimeOpt time.Time, opts ...ClientOption) (*FileUpload, error) {
 	q := toQuery(opts...)
@@ -222,28 +228,6 @@ func ToT3ByIDName(folderID uint64, name string) ToT3PathOrFolderIDName {
 		q.Set("toname", name)
 	}
 }
-
-// func upload(client *http.Client, url string, files []*os.File) (err error) {
-// 	contentType, data, err := prepareForm(files)
-
-// 	req, err := http.NewRequest("POST", url, data)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-// 	// set the content type, this will contain the boundary.
-// 	req.Header.Set("Content-Type", contentType)
-
-// 	res, err := client.Do(req)
-// 	if err != nil {
-// 		return errors.WithStack(err)
-// 	}
-
-// 	if res.StatusCode != http.StatusOK {
-// 		err = fmt.Errorf("bad status: %s", res.Status)
-// 	}
-
-// 	return errors.WithStack(err)
-// }
 
 func prepareForm(files map[string]*os.File) (string, []byte, error) {
 	var b bytes.Buffer
