@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 )
@@ -23,6 +24,8 @@ type Client struct {
 	// credentials by `auth` parameter. This token is especially good for setting the `auth` cookie
 	// to keep the user logged in.
 	auth string
+
+	lock sync.Mutex
 }
 
 // NewClient creates a new initialised pCloud Client.
@@ -35,7 +38,7 @@ func NewClient(c *http.Client) *Client {
 
 // do executes an HTTPS (enforced) request to the pCloud API endpoint.
 // it returns the content-type string, the data from the response and an error, if applicable.
-func (c *Client) do(ctx context.Context, method string, endpoint string, query url.Values, data []byte) (string, []byte, error) {
+func (c *Client) do(ctx context.Context, method string, endpoint string, query url.Values, contentType string, data []byte) (string, []byte, error) {
 	if c.auth != "" {
 		query.Add("auth", c.auth)
 	}
@@ -54,11 +57,10 @@ func (c *Client) do(ctx context.Context, method string, endpoint string, query u
 
 	req.Header.Add("Connection", "Keep-Alive")
 	// req.Header.Add("Keep-Alive", "timeout=600, max=1000")
+	req.Header.Add("Content-Type", contentType)
 
-	if method == http.MethodPut {
-		// the content-type must be octet-stream for uploads
-		req.Header.Add("Content-Type", "application/octet-stream")
-	}
+	c.lock.Lock()
+	defer c.lock.Unlock()
 
 	resp, err := c.httpClient.Do(req)
 	if resp != nil {
@@ -91,7 +93,7 @@ func (c *Client) do(ctx context.Context, method string, endpoint string, query u
 
 // get executes an HTTPS (enforced) GET to the pCloud API endpoint.
 func (c *Client) get(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
-	_, body, err := c.do(ctx, http.MethodGet, endpoint, query, nil)
+	_, body, err := c.do(ctx, http.MethodGet, endpoint, query, "application/json", nil)
 	return body, err
 }
 
@@ -100,7 +102,7 @@ func (c *Client) get(ctx context.Context, endpoint string, query url.Values) ([]
 // When the content-type is application/json and the 'X-Error: xxxx' header is present, it
 // returns an error instead.
 func (c *Client) binget(ctx context.Context, endpoint string, query url.Values) ([]byte, error) {
-	ct, body, err := c.do(ctx, http.MethodGet, endpoint, query, nil)
+	ct, body, err := c.do(ctx, http.MethodGet, endpoint, query, "application/octet-stream", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +121,16 @@ func (c *Client) binget(ctx context.Context, endpoint string, query url.Values) 
 
 // put executes an HTTPS (enforced) PUT to the pCloud API endpoint.
 func (c *Client) put(ctx context.Context, endpoint string, query url.Values, data []byte) ([]byte, error) {
-	_, body, err := c.do(ctx, http.MethodPut, endpoint, query, data)
+	_, body, err := c.do(ctx, http.MethodPut, endpoint, query, "application/octet-stream", data)
+	return body, err
+}
+
+// post executes an HTTPS (enforced) POST with multipart/form-data to the pCloud API endpoint.
+func (c *Client) post(ctx context.Context, endpoint string, query url.Values, contentType string, data []byte) ([]byte, error) {
+	_, body, err := c.do(ctx, http.MethodPost, endpoint, query, contentType, data)
+	if err != nil {
+		return nil, err
+	}
 	return body, err
 }
 

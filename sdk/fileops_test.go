@@ -68,7 +68,9 @@ func (suite *IntegrationTestSuite) Test_FileOps_ByPath() {
 		cs.Write([]byte(Lipsum))
 		sha1sum = fmt.Sprintf("%x", cs.Sum(nil))
 		fc, err := suite.pcc.ChecksumFile(suite.ctx, sdk.T3FileByPath(folderPath+"/"+fileName))
-		suite.Require().NoError(err)
+		if err != nil {
+			continue
+		}
 		if uint64(len(Lipsum)) != fc.Metadata.Size {
 			// file changes have not quite yet fully propagated internally in pCloud
 			continue

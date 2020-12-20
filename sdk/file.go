@@ -1,10 +1,16 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/url"
+	"os"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 // FileResult contains properties about an operation on a file such as:
@@ -93,7 +99,7 @@ func (c *Client) CopyFile(ctx context.Context, file T3PathOrFileID, destination 
 	return r, nil
 }
 
-// FileChecksum is returned by the SDK FileChecksum method.
+// FileChecksum is returned by the SDK FileChecksum() method.
 type FileChecksum struct {
 	result
 	SHA1     string
@@ -124,6 +130,76 @@ func (c *Client) ChecksumFile(ctx context.Context, file T3PathOrFileID, opts ...
 	return fc, nil
 }
 
+// FileUpload is returned by the SDK UploadFile() method.
+type FileUpload struct {
+	result
+	FileIDs   []uint64
+	Checksums []Checksums
+	Metadata  []Metadata
+}
+
+// Checksums contains various checksum data.
+type Checksums struct {
+	SHA1   string
+	MD5    string
+	SHA256 string
+}
+
+// UploadFile Upload a file.
+// String path or int folderid specify the target directory. If both are omitted the root folder
+// is selected.
+// Parameter string progresshash can be passed. Same should be passed to uploadprogress method.
+// If nopartial is set, partially uploaded files will not be saved (that is when the connection
+// breaks before file is read in full). If renameifexists is set, on name conflict, files will
+// not be overwritten but renamed to name like filename (2).ext.
+// Multiple files can be uploaded, using POST with multipart/form-data encoding. If passed by
+// POST, the parameters must come before files. All files are accepted, the name of the form
+// field is ignored. Multiple files can come one or more HTML file controls.
+// Filenames must be passed as filename property of each file, that is - the way browsers send
+// the file names.
+// If a file with the same name already exists in the directory, it is overwritten and old one
+// is saved as revision. Overwriting a file with the same data does nothing except updating the
+// modification time of the file.
+// https://docs.pcloud.com/methods/file/uploadfile.html
+func (c *Client) UploadFile(ctx context.Context, folder T1PathOrFolderID, files map[string]*os.File, noPartialOpt bool, progressHashOpt string, renameIfExistsOpt bool, mTimeOpt time.Time, cTimeOpt time.Time, opts ...ClientOption) (*FileUpload, error) {
+	q := toQuery(opts...)
+	folder(q)
+
+	if noPartialOpt {
+		q.Add("nopartial", "1")
+	}
+
+	if progressHashOpt != "" {
+		q.Add("progresshash", progressHashOpt)
+	}
+
+	if renameIfExistsOpt {
+		q.Add("renameifexists", "1")
+	}
+
+	if !mTimeOpt.IsZero() {
+		q.Add("mtime", fmt.Sprintf("%d", mTimeOpt.UTC().Unix()))
+	}
+
+	if !cTimeOpt.IsZero() {
+		q.Add("ctime", fmt.Sprintf("%d", cTimeOpt.UTC().Unix()))
+	}
+
+	fu := &FileUpload{}
+
+	contentType, data, err := prepareForm(files)
+	if err != nil {
+		return nil, err
+	}
+
+	err = parseAPIOutput(fu)(c.post(ctx, "uploadfile", q, contentType, data))
+	if err != nil {
+		return nil, err
+	}
+
+	return fu, nil
+}
+
 // ToT3PathOrFolderIDName is a type of parameters that some of the SDK functions take.
 // It applies when referencing a destination folder.
 // Functions that use it have a dichotomic usage to reference a folder:
@@ -145,4 +221,50 @@ func ToT3ByIDName(folderID uint64, name string) ToT3PathOrFolderIDName {
 		q.Set("tofolderid", fmt.Sprintf("%d", folderID))
 		q.Set("toname", name)
 	}
+}
+
+// func upload(client *http.Client, url string, files []*os.File) (err error) {
+// 	contentType, data, err := prepareForm(files)
+
+// 	req, err := http.NewRequest("POST", url, data)
+// 	if err != nil {
+// 		return errors.WithStack(err)
+// 	}
+// 	// set the content type, this will contain the boundary.
+// 	req.Header.Set("Content-Type", contentType)
+
+// 	res, err := client.Do(req)
+// 	if err != nil {
+// 		return errors.WithStack(err)
+// 	}
+
+// 	if res.StatusCode != http.StatusOK {
+// 		err = fmt.Errorf("bad status: %s", res.Status)
+// 	}
+
+// 	return errors.WithStack(err)
+// }
+
+func prepareForm(files map[string]*os.File) (string, []byte, error) {
+	var b bytes.Buffer
+
+	w := multipart.NewWriter(&b)
+	defer w.Close()
+
+	for destName, f := range files {
+		fw, err := w.CreateFormFile(destName, destName)
+		if err != nil {
+			return "", nil, errors.WithStack(err)
+		}
+
+		_, err = io.Copy(fw, f)
+		if err != nil {
+			return "", nil, errors.WithStack(err)
+		}
+	}
+
+	// close the multipart writer to ensure the terminating boundary is written.
+	w.Close()
+
+	return w.FormDataContentType(), b.Bytes(), nil
 }

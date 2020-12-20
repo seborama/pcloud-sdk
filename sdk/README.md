@@ -28,7 +28,7 @@
   - ✅ deletefolderrecursive
   - ✅ copyfolder
 - File
-  - uploadfile
+  - ✅ uploadfile
   - uploadprogress
   - downloadfile
   - downloadfileasync
