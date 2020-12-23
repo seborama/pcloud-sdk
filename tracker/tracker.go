@@ -22,11 +22,13 @@ type storer interface {
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context) error
 }
 
+// Tracker contains the elements necessary to track file system mutations.
 type Tracker struct {
 	pCloudClient sdkClient
 	store        storer
 }
 
+// NewTracker creates a new initiliased Tracker.
 func NewTracker(ctx context.Context, pCloudClient sdkClient, store storer) (*Tracker, error) {
 	return &Tracker{
 		pCloudClient: pCloudClient,
@@ -59,7 +61,15 @@ func (t *Tracker) Track(ctx context.Context) error {
 	return nil
 }
 
+// ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
+// (includes removing all entries marked as VersionPrevious) and then queries list all PCloud
+// contents from '/' recursively and stores the results as VersionNew.
 func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
+	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx)
+	if err != nil {
+		return err
+	}
+
 	lf, err := t.pCloudClient.ListFolder(ctx, sdk.T1FolderByID(sdk.RootFolderID), true, true, false, false)
 	if err != nil {
 		return err
@@ -105,6 +115,8 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 	return nil
 }
 
+// FindPCloudMutations determines all mutations that have taken place in PCloud between
+// VersionPrevious and VersionNew.
 func (t *Tracker) FindPCloudMutations(ctx context.Context) ([]db.FSMutation, error) {
 	fsMutations, err := t.store.GetPCloudMutations(ctx)
 	if err != nil {
