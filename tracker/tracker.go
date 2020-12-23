@@ -86,7 +86,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 		fsEntry := db.FSEntry{
 			EntryID:        entryID,
 			IsFolder:       entry.IsFolder,
-			Deleted:        entry.IsDeleted,
+			IsDeleted:      entry.IsDeleted,
 			DeletedFileID:  entry.DeletedFileID,
 			Name:           entry.Name,
 			ParentFolderID: entry.ParentFolderID,

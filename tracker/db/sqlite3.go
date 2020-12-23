@@ -66,7 +66,7 @@ const (
 type FSEntry struct {
 	EntryID        uint64
 	IsFolder       bool
-	Deleted        bool
+	IsDeleted      bool
 	DeletedFileID  uint64
 	Name           string
 	ParentFolderID uint64
@@ -80,12 +80,12 @@ func (s *SQLite3) AddNewFileSystemEntry(ctx context.Context, entry FSEntry) erro
 	_, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO "filesystem"
-			(version, entry_id, is_folder, deleted, deleted_file_id, name, parent_folder_id, created, modified, size, hash)
+			(version, entry_id, is_folder, is_deleted, deleted_file_id, name, parent_folder_id, created, modified, size, hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		VersionNew,
 		fmt.Sprintf("%d", entry.EntryID),
 		entry.IsFolder,
-		entry.Deleted,
+		entry.IsDeleted,
 		fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
 		entry.Name,
 		fmt.Sprintf("%d", entry.ParentFolderID),
@@ -106,7 +106,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, version Version) ([]
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT
-			entry_id, is_folder, deleted, deleted_file_id, name, parent_folder_id, created, modified, size, hash
+			entry_id, is_folder, is_deleted, deleted_file_id, name, parent_folder_id, created, modified, size, hash
 		 FROM "filesystem"
 		 WHERE version = ?`,
 		version,
@@ -123,7 +123,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, version Version) ([]
 		err := rows.Scan(
 			&entry.EntryID,
 			&entry.IsFolder,
-			&entry.Deleted,
+			&entry.IsDeleted,
 			&entry.DeletedFileID,
 			&entry.Name,
 			&entry.ParentFolderID,
@@ -172,8 +172,12 @@ const (
 func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) {
 	rows, err := s.db.QueryContext(
 		ctx,
-		`WITH previous AS (SELECT * FROM filesystem WHERE version = '`+string(VersionPrevious)+`'),
-		      new AS (SELECT * FROM filesystem WHERE version = '`+VersionNew+`')
+		`WITH previous AS (SELECT * FROM filesystem
+						   WHERE version = '`+string(VersionPrevious)+`'
+						     AND is_deleted = false),
+			  new AS (SELECT * FROM filesystem
+					  WHERE version = '`+VersionNew+`'
+					  AND is_deleted = false)
 
 		SELECT
 			'`+string(MutationTypeDeleted)+`', previous.*
@@ -221,7 +225,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			&fsMutation.Version,
 			&fsMutation.EntryID,
 			&fsMutation.IsFolder,
-			&fsMutation.Deleted,
+			&fsMutation.IsDeleted,
 			&fsMutation.DeletedFileID,
 			&fsMutation.Name,
 			&fsMutation.ParentFolderID,

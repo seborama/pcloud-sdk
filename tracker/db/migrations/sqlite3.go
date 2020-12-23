@@ -13,7 +13,7 @@ var SQLite3 = []string{
 			"version"           CHAR(1),
 			"entry_id"          VARCHAR,
 			"is_folder"         BOOL DEFAULT FALSE,
-			"deleted"           BOOL DEFAULT FALSE,
+			"is_deleted"        BOOL DEFAULT FALSE,
 			"deleted_file_id"   VARCHAR NULL,
 			"name"              VARCHAR NOT NULL,
 			"parent_folder_id"  VARCHAR NOT NULL,
