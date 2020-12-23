@@ -41,8 +41,15 @@ type Metadata struct {
 	Contents []Metadata `json:"contents,omitempty"`
 
 	// File-specific
-	FileID      uint64 `json:"fileid,omitempty"`
-	Hash        uint64 `json:"hash,omitempty"`
+	FileID uint64 `json:"fileid,omitempty"`
+	Hash   uint64 `json:"hash,omitempty"`
+	// Category is one of:
+	// 0 - uncategorized
+	// 1 - image
+	// 2 - video
+	// 3 - audio
+	// 4 - document
+	// 5 - archive
 	Category    int32  `json:"category,omitempty"`
 	Size        uint64 `json:"size,omitempty"`
 	ContentType string `json:"contenttype,omitempty"`
