@@ -116,7 +116,8 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, version Version) ([]
 	}
 	defer rows.Close()
 
-	var fsEntries []FSEntry
+	fsEntries := []FSEntry{}
+
 	for rows.Next() {
 		entry := FSEntry{}
 		err := rows.Scan(
@@ -211,7 +212,8 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 	}
 	defer rows.Close()
 
-	var fsMutations []FSMutation
+	fsMutations := []FSMutation{}
+
 	for rows.Next() {
 		fsMutation := FSMutation{}
 		err := rows.Scan(

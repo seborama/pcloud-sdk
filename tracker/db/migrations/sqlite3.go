@@ -11,7 +11,7 @@ var SQLite3 = []string{
 
 		CREATE TABLE IF NOT EXISTS "filesystem" (
 			"version"           CHAR(1),
-			"entry_id"          VARCHAR PRIMARY KEY,
+			"entry_id"          VARCHAR,
 			"is_folder"         BOOL DEFAULT FALSE,
 			"deleted"           BOOL DEFAULT FALSE,
 			"deleted_file_id"   VARCHAR NULL,
@@ -20,7 +20,9 @@ var SQLite3 = []string{
 			"created"           DATETIME NOT NULL,
 			"modified"          DATETIME NOT NULL,
 			"size"              INTEGER NULL, -- only valid for files
-			"hash"              VARCHAR NULL -- only valid for files
+			"hash"              VARCHAR NULL, -- only valid for files
+
+			PRIMARY KEY (version, entry_id)
 		);
 
 		CREATE TABLE IF NOT EXISTS "events" (

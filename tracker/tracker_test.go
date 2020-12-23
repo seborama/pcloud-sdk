@@ -2,6 +2,8 @@ package tracker_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker"
@@ -317,6 +319,48 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_AllOldFiles() {
 
 	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
 	suite.Require().NoError(err)
+
+	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
+	}
+	sort.Slice(expected, sortedMutations(expected))
+	sort.Slice(fsMutations, sortedMutations(fsMutations))
+	suite.Equal("", cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()))
+}
+
+func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
+	time1 := time.Now().Add(-24 * time.Hour)
+	time2 := time.Now().Add(-23 * time.Hour)
+	time3 := time.Now().Add(-22 * time.Hour)
+	time4 := time.Now().Add(-21 * time.Hour)
+	time5 := time.Now().Add(-20 * time.Hour)
+	time6 := time.Now().Add(-19 * time.Hour)
+
+	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6)
+	for _, e := range fse1 {
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		suite.Require().NoError(err)
+	}
+
+	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx)
+
+	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6)
+	for _, e := range fse1 {
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		suite.Require().NoError(err)
+	}
+
+	expected := []db.FSMutation{}
+
+	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
+	suite.Require().NoError(err)
+	// --- 8x -- DEBUG -- x8 ---
+	fsMJ, err := json.MarshalIndent(fsMutations, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("fsMutations:", string(fsMJ))
+	// --- 8x -- DEBUG -- x8 ---
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
