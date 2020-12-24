@@ -2,6 +2,7 @@ package tracker_test
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -76,7 +78,7 @@ func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	lf := folderTreeSample1(time1, time2, time3, time4, time5, time6, time7)
+	lf := pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7)
 
 	suite.pCloudClient.
 		On("ListFolder", suite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), true, true, false, false, []sdk.ClientOption(nil)).
@@ -88,7 +90,7 @@ func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
 
 	expected := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	fsEntries, err := suite.store.GetLatestFileSystemEntries(suite.ctx)
+	fsEntries, err := suite.store.GetLatestFileSystemEntries(suite.ctx, db.PCloudFileSystem)
 	suite.Require().NoError(err)
 
 	sortedEntries := func(elements []db.FSEntry) func(i, j int) bool {
@@ -110,7 +112,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
@@ -123,6 +125,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 				IsFolder:       true,
 				IsDeleted:      false,
 				DeletedFileID:  0,
+				Path:           "/",
 				Name:           "/",
 				ParentFolderID: 0,
 				Created:        time1,
@@ -136,6 +139,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 				EntryID:        20001,
 				IsFolder:       true,
 				IsDeleted:      false,
+				Path:           "/",
 				Name:           "Folder2",
 				ParentFolderID: 0,
 				Created:        time4,
@@ -149,6 +153,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 				EntryID:        20002,
 				IsFolder:       false,
 				IsDeleted:      false,
+				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
 				Created:        time5,
@@ -164,6 +169,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 				EntryID:        30001,
 				IsFolder:       true,
 				IsDeleted:      false,
+				Path:           "/",
 				Name:           "Folder3",
 				ParentFolderID: 0,
 				Created:        time6,
@@ -177,7 +183,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 				EntryID:        1000003,
 				IsFolder:       false,
 				IsDeleted:      false,
-				Name:           "File3",
+				Path:           "/",
+				Name:           "File000",
 				ParentFolderID: 0,
 				Created:        time7,
 				Modified:       time7,
@@ -209,11 +216,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx)
+	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
 
 	expected := []db.FSMutation{
 		{
@@ -224,6 +231,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 				IsFolder:       true,
 				IsDeleted:      false,
 				DeletedFileID:  0,
+				Path:           "/",
 				Name:           "/",
 				ParentFolderID: 0,
 				Created:        time1,
@@ -237,6 +245,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 				EntryID:        20001,
 				IsFolder:       true,
 				IsDeleted:      false,
+				Path:           "/",
 				Name:           "Folder2",
 				ParentFolderID: 0,
 				Created:        time4,
@@ -250,6 +259,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 				EntryID:        20002,
 				IsFolder:       false,
 				IsDeleted:      false,
+				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
 				Created:        time5,
@@ -265,6 +275,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 				EntryID:        30001,
 				IsFolder:       true,
 				IsDeleted:      false,
+				Path:           "/",
 				Name:           "Folder3",
 				ParentFolderID: 0,
 				Created:        time6,
@@ -278,7 +289,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 				EntryID:        1000003,
 				IsFolder:       false,
 				IsDeleted:      false,
-				Name:           "File3",
+				Path:           "/",
+				Name:           "File000",
 				ParentFolderID: 0,
 				Created:        time7,
 				Modified:       time7,
@@ -311,11 +323,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx)
+	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
@@ -323,7 +335,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 		if e.EntryID == 20002 {
 			e.Hash = 1234565432100020002
 		}
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
@@ -335,6 +347,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 				EntryID:        20002,
 				IsFolder:       false,
 				IsDeleted:      false,
+				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
 				Created:        time5,
@@ -368,19 +381,21 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx)
+	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
 	for _, e := range fse1 {
 		if e.EntryID == 20002 {
-			e.ParentFolderID = 30001 // move File2 to Folder3
+			// move File2 to Folder3
+			e.Path = "/Folder3"
+			e.ParentFolderID = 30001
 		}
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
@@ -392,6 +407,7 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 				EntryID:        20002,
 				IsFolder:       false,
 				IsDeleted:      false,
+				Path:           "/Folder3",
 				Name:           "File2",
 				ParentFolderID: 30001,
 				Created:        time5,
@@ -424,15 +440,15 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx)
+	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 	for _, e := range fse1 {
-		err := suite.store.AddNewFileSystemEntry(suite.ctx, e)
+		err := suite.store.AddNewFileSystemEntry(suite.ctx, db.PCloudFileSystem, e)
 		suite.Require().NoError(err)
 	}
 
@@ -447,6 +463,115 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	suite.Equal("", cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()))
+}
+
+func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
+	now := time.Now()
+
+	err := os.MkdirAll("./data_test/local", 0x750)
+	suite.Require().NoError(err)
+	err = ioutil.WriteFile("./data_test/local/File0", []byte(uuid.New().String()), 0x750)
+	suite.Require().NoError(err)
+
+	err = os.MkdirAll("./data_test/local/Folder1", 0x750)
+	suite.Require().NoError(err)
+	err = ioutil.WriteFile("./data_test/local/Folder1/File1", []byte(uuid.New().String()), 0x750)
+	suite.Require().NoError(err)
+
+	err = os.MkdirAll("./data_test/local/Folder2", 0x750)
+	suite.Require().NoError(err)
+	err = ioutil.WriteFile("./data_test/local/Folder2/File2", []byte(uuid.New().String()), 0x750)
+	suite.Require().NoError(err)
+
+	err = os.MkdirAll("./data_test/local/Folder3", 0x750)
+	suite.Require().NoError(err)
+	err = ioutil.WriteFile("./data_test/local/Folder3/File000", []byte(uuid.New().String()), 0x750)
+	suite.Require().NoError(err)
+
+	err = suite.tracker.ListLatestLocalContents(suite.ctx, "./data_test/local")
+	suite.Require().NoError(err)
+
+	expected := []db.FSEntry{
+		{
+			IsFolder:  true,
+			IsDeleted: false,
+			Name:      "local",
+			Hash:      0,
+		},
+		{
+			IsFolder:  false,
+			IsDeleted: false,
+			Name:      "File0",
+			Size:      36,
+			Hash:      0,
+		},
+		{
+			IsFolder:  true,
+			IsDeleted: false,
+			Name:      "Folder1",
+			Hash:      0,
+		},
+		{
+			IsFolder:  false,
+			IsDeleted: false,
+			Name:      "File1",
+			Size:      36,
+			Hash:      0,
+		},
+		{
+			IsFolder:  true,
+			IsDeleted: false,
+			Name:      "Folder2",
+			Hash:      0,
+		},
+		{
+			IsFolder:  false,
+			IsDeleted: false,
+			Name:      "File2",
+			Size:      36,
+			Hash:      0,
+		},
+		{
+			IsFolder:  true,
+			IsDeleted: false,
+			Name:      "Folder3",
+			Hash:      0,
+		},
+		{
+			IsFolder:  false,
+			IsDeleted: false,
+			Name:      "File000",
+			Size:      36,
+			Hash:      0,
+		},
+	}
+
+	fsEntries, err := suite.store.GetLatestFileSystemEntries(suite.ctx, db.LocalFileSystem)
+	suite.Require().NoError(err)
+	suite.Require().Len(fsEntries, len(expected))
+
+	sortedEntries := func(elements []db.FSEntry) func(i, j int) bool {
+		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
+	}
+
+	sort.Slice(expected, sortedEntries(expected))
+	sort.Slice(fsEntries, sortedEntries(fsEntries))
+
+	for i, e := range expected {
+		actualE := fsEntries[i]
+		suite.NotEmpty(actualE.DeviceID)
+		suite.Greater(actualE.EntryID, uint64(0))
+		suite.EqualValues(e.IsFolder, actualE.IsFolder)
+		suite.False(actualE.IsDeleted)
+		suite.EqualValues(e.Name, actualE.Name)
+		suite.Greaterf(actualE.ParentFolderID, uint64(0), "expected: %s - actual: %s", e.Name, fsEntries[i].Name)
+		suite.WithinDuration(now, actualE.Created, 5*time.Minute)
+		suite.WithinDuration(now, actualE.Modified, 5*time.Minute)
+		if !e.IsFolder {
+			suite.EqualValues(e.Size, actualE.Size)
+		}
+		suite.EqualValues(e.Hash, actualE.Hash)
+	}
 }
 
 type pCloudClientMock struct {
@@ -469,8 +594,8 @@ func (m *pCloudClientMock) Diff(ctx context.Context, diffID uint64, after time.T
 // ├── Folder2
 // │   ├── File2
 // ├── Folder3
-// └── File3
-func folderTreeSample1(time1, time2, time3, time4, time5, time6, time7 time.Time) *sdk.FSList {
+// └── File000
+func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 time.Time) *sdk.FSList {
 	return &sdk.FSList{
 		Metadata: sdk.Metadata{
 			Path: "/",
@@ -600,7 +725,7 @@ func folderTreeSample1(time1, time2, time3, time4, time5, time6, time7 time.Time
 					Contents:       []sdk.Metadata{},
 				},
 				{
-					Name: "File3",
+					Name: "File000",
 					Created: &sdk.APITime{
 						Time: time7,
 					},
@@ -634,6 +759,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			IsFolder:       true,
 			IsDeleted:      false,
 			DeletedFileID:  0,
+			Path:           "/",
 			Name:           "/",
 			ParentFolderID: 0,
 			Created:        time1,
@@ -643,6 +769,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        10001,
 			IsFolder:       true,
 			IsDeleted:      true,
+			Path:           "/",
 			Name:           "Folder1",
 			ParentFolderID: 0,
 			Created:        time2,
@@ -652,6 +779,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        10002,
 			IsFolder:       false,
 			IsDeleted:      true,
+			Path:           "/Folder1",
 			Name:           "File1",
 			ParentFolderID: 10001,
 			Created:        time3,
@@ -663,6 +791,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        20001,
 			IsFolder:       true,
 			IsDeleted:      false,
+			Path:           "/",
 			Name:           "Folder2",
 			ParentFolderID: 0,
 			Created:        time4,
@@ -672,6 +801,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        20002,
 			IsFolder:       false,
 			IsDeleted:      false,
+			Path:           "/Folder2",
 			Name:           "File2",
 			ParentFolderID: 20001,
 			Created:        time5,
@@ -683,6 +813,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        30001,
 			IsFolder:       true,
 			IsDeleted:      false,
+			Path:           "/",
 			Name:           "Folder3",
 			ParentFolderID: 0,
 			Created:        time6,
@@ -692,7 +823,8 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			EntryID:        1000003,
 			IsFolder:       false,
 			IsDeleted:      false,
-			Name:           "File3",
+			Path:           "/",
+			Name:           "File000",
 			ParentFolderID: 0,
 			Created:        time7,
 			Modified:       time7,

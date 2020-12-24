@@ -2,8 +2,12 @@ package tracker
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker/db"
+	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,11 +19,10 @@ type sdkClient interface {
 }
 
 type storer interface {
-	GetLatestTrackingInfo(ctx context.Context) (*db.TrackingInfo, error)
-	AddNewFileSystemEntry(ctx context.Context, entry db.FSEntry) error
-	GetLatestFileSystemEntries(ctx context.Context) ([]db.FSEntry, error)
+	AddNewFileSystemEntry(ctx context.Context, fsType db.FSType, entry db.FSEntry) error
+	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
-	MarkNewFileSystemEntriesAsPrevious(ctx context.Context) error
+	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
 }
 
 // Tracker contains the elements necessary to track file system mutations.
@@ -37,11 +40,6 @@ func NewTracker(ctx context.Context, pCloudClient sdkClient, store storer) (*Tra
 }
 
 func (t *Tracker) Track(ctx context.Context) error {
-	// ti, err := t.store.GetLatestTrackingInfo(ctx)
-	// if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 	return err
-	// }
-
 	err := t.ListLatestPCloudContents(ctx)
 	if err != nil {
 		return err
@@ -52,20 +50,19 @@ func (t *Tracker) Track(ctx context.Context) error {
 		return err
 	}
 
-	// dr, err := t.pCloudClient.Diff(ctx, 0, time.Now().Add(-10*time.Minute), 0, false, 0)
-	// if err != nil {
-	// 	return err
-	// }
-	// _ = dr
-
 	return nil
 }
 
+type folderChildren struct {
+	Name     string
+	ChildIDs []uint64
+}
+
 // ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
-// (includes removing all entries marked as VersionPrevious) and then queries list all PCloud
-// contents from '/' recursively and stores the results as VersionNew.
+// (includes removing all entries marked as VersionPrevious) and then queries the contents
+// of '/' from PCloud recursively and stores the results as VersionNew.
 func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
-	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx)
+	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
 	if err != nil {
 		return err
 	}
@@ -88,8 +85,10 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 		entryID := entry.FileID
 		if entry.IsFolder {
 			for _, e := range entry.Contents {
+				e.Path = filepath.Join(entry.Path, entry.Name)
 				entries.add(e)
 			}
+
 			entryID = entry.FolderID
 		}
 
@@ -98,6 +97,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 			IsFolder:       entry.IsFolder,
 			IsDeleted:      entry.IsDeleted,
 			DeletedFileID:  entry.DeletedFileID,
+			Path:           entry.Path,
 			Name:           entry.Name,
 			ParentFolderID: entry.ParentFolderID,
 			Created:        entry.Created.Time,
@@ -106,13 +106,85 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 			Hash:           entry.Hash,
 		}
 
-		err = t.store.AddNewFileSystemEntry(ctx, fsEntry)
+		err = t.store.AddNewFileSystemEntry(ctx, db.PCloudFileSystem, fsEntry)
 		if err != nil {
-			return errors.WithMessagef(err, "entryID: %d", entry.FileID)
+			return errors.WithMessagef(err, "deviceID: %s entryID: %d", fsEntry.DeviceID, fsEntry.EntryID)
 		}
 	}
 
 	return nil
+}
+
+// ListLatestLocalContents moves all entries marked as VersionNew to VersionPrevious
+// (includes removing all entries marked as VersionPrevious) and then queries the contents
+// of '/' from PCloud recursively and stores the results as VersionNew.
+func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) error {
+	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.LocalFileSystem)
+	if err != nil {
+		return err
+	}
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	if !fi.IsDir() {
+		return errors.Errorf("path is not pointing at a directory: %s", path)
+	}
+
+	deviceID := fi.Sys().(*syscall.Stat_t).Dev // Unix only
+
+	folderIDs := map[string]uint64{}
+
+	err = filepath.Walk(path,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return errors.WithStack(err)
+			}
+
+			if info.Sys().(*syscall.Stat_t).Dev != deviceID {
+				return filepath.SkipDir
+			}
+
+			dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean on the directory
+			if info.IsDir() {
+				dir = filepath.Clean(path)
+				folderIDs[dir] = info.Sys().(*syscall.Stat_t).Ino // Unix only
+			}
+
+			// TODO: OSX-specific!!
+			createdTime := time.Unix(int64(info.Sys().(*syscall.Stat_t).Ctimespec.Sec), int64(info.Sys().(*syscall.Stat_t).Ctimespec.Nsec))
+
+			parentFolderID, ok := folderIDs[dir]
+			if !ok {
+				return errors.Errorf("unable to determine parent folder ID for '%s' using key='%s'", path, dir)
+			}
+
+			// TODO: this is currently unix-specific, make more generic to at least include Windows
+			//       see: go/src/os/types_windows.go
+			//       see: https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
+			fsEntry := db.FSEntry{
+				DeviceID:       fmt.Sprintf("%d", deviceID),
+				EntryID:        info.Sys().(*syscall.Stat_t).Ino, // Unix only
+				IsFolder:       info.IsDir(),
+				Name:           info.Name(),
+				ParentFolderID: parentFolderID, // TODO: needs to be set to parent folder (Dev? +) Ino
+				Created:        createdTime,
+				Modified:       info.ModTime(),
+				Size:           uint64(info.Size()),
+				Hash:           0, // TODO: needs calculating but only if new / modified file
+			}
+
+			err = t.store.AddNewFileSystemEntry(ctx, db.LocalFileSystem, fsEntry)
+			if err != nil {
+				return errors.WithMessagef(err, "deviceID: %s entryID: %d", fsEntry.DeviceID, fsEntry.EntryID)
+			}
+
+			return nil
+		})
+
+	return err
 }
 
 // FindPCloudMutations determines all mutations that have taken place in PCloud between
