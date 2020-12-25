@@ -248,7 +248,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		 UNION
 
 		 SELECT
-		 	'`+MutationTypeMoved+`',
+			'`+MutationTypeMoved+`',
 			new.version,
 			new.device_id,
 			new.entry_id,

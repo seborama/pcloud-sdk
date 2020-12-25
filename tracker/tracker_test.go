@@ -470,7 +470,7 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 
 	err := os.MkdirAll("./data_test/local", 0x750)
 	suite.Require().NoError(err)
-	err = ioutil.WriteFile("./data_test/local/File0", []byte(uuid.New().String()), 0x750)
+	err = ioutil.WriteFile("./data_test/local/File000", []byte(uuid.New().String()), 0x750)
 	suite.Require().NoError(err)
 
 	err = os.MkdirAll("./data_test/local/Folder1", 0x750)
@@ -485,7 +485,7 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 
 	err = os.MkdirAll("./data_test/local/Folder3", 0x750)
 	suite.Require().NoError(err)
-	err = ioutil.WriteFile("./data_test/local/Folder3/File000", []byte(uuid.New().String()), 0x750)
+	err = ioutil.WriteFile("./data_test/local/Folder3/File3", []byte(uuid.New().String()), 0x750)
 	suite.Require().NoError(err)
 
 	err = suite.tracker.ListLatestLocalContents(suite.ctx, "./data_test/local")
@@ -495,25 +495,29 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
+			Path:      "data_test",
 			Name:      "local",
 			Hash:      0,
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Name:      "File0",
+			Path:      "data_test/local",
+			Name:      "File000",
 			Size:      36,
 			Hash:      0,
 		},
 		{
 			IsFolder:  true,
 			IsDeleted: false,
+			Path:      "data_test/local",
 			Name:      "Folder1",
 			Hash:      0,
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
+			Path:      "data_test/local/Folder1",
 			Name:      "File1",
 			Size:      36,
 			Hash:      0,
@@ -521,12 +525,14 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
+			Path:      "data_test/local",
 			Name:      "Folder2",
 			Hash:      0,
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
+			Path:      "data_test/local/Folder2",
 			Name:      "File2",
 			Size:      36,
 			Hash:      0,
@@ -534,13 +540,15 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
+			Path:      "data_test/local",
 			Name:      "Folder3",
 			Hash:      0,
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Name:      "File000",
+			Path:      "data_test/local/Folder3",
+			Name:      "File3",
 			Size:      36,
 			Hash:      0,
 		},
@@ -563,6 +571,7 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		suite.Greater(actualE.EntryID, uint64(0))
 		suite.EqualValues(e.IsFolder, actualE.IsFolder)
 		suite.False(actualE.IsDeleted)
+		suite.EqualValues(e.Path, actualE.Path, "for: "+actualE.Name)
 		suite.EqualValues(e.Name, actualE.Name)
 		suite.Greaterf(actualE.ParentFolderID, uint64(0), "expected: %s - actual: %s", e.Name, fsEntries[i].Name)
 		suite.WithinDuration(now, actualE.Created, 5*time.Minute)

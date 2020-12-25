@@ -147,7 +147,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 				return filepath.SkipDir
 			}
 
-			dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean on the directory
+			dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean
 			if info.IsDir() {
 				dir = filepath.Clean(path)
 				folderIDs[dir] = info.Sys().(*syscall.Stat_t).Ino // Unix only
@@ -168,8 +168,9 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 				DeviceID:       fmt.Sprintf("%d", deviceID),
 				EntryID:        info.Sys().(*syscall.Stat_t).Ino, // Unix only
 				IsFolder:       info.IsDir(),
+				Path:           filepath.Dir(path),
 				Name:           info.Name(),
-				ParentFolderID: parentFolderID, // TODO: needs to be set to parent folder (Dev? +) Ino
+				ParentFolderID: parentFolderID,
 				Created:        createdTime,
 				Modified:       info.ModTime(),
 				Size:           uint64(info.Size()),
