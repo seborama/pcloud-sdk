@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -16,7 +17,7 @@ type SQLite3 struct {
 }
 
 func NewSQLite3(ctx context.Context, dbPath string) (*SQLite3, error) {
-	dbPathFilename := dbPath + "/" + "tracker.db"
+	dbPathFilename := filepath.Join(dbPath, "tracker.db")
 
 	db, err := sql.Open("sqlite3", dbPathFilename)
 	if err != nil {
@@ -58,32 +59,60 @@ type FSEntry struct {
 	Created        time.Time
 	Modified       time.Time
 	Size           uint64
-	Hash           uint64
+	Hash           string
 }
 
-func (s *SQLite3) AddNewFileSystemEntry(ctx context.Context, fsType FSType, entry FSEntry) error {
-	_, err := s.db.ExecContext(
-		ctx,
-		`INSERT INTO "filesystem"
+func (s *SQLite3) AddNewFileSystemEntry(ctx context.Context, fsType FSType) (chan<- FSEntry, <-chan error) {
+	entriesCh := make(chan FSEntry, 100)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(errCh)
+
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			errCh <- errors.WithStack(err)
+			return
+		}
+
+		for entry := range entriesCh {
+			_, err := tx.ExecContext(
+				ctx,
+				`INSERT INTO "filesystem"
 			(type, version, device_id, entry_id, is_folder, is_deleted, deleted_file_id, path, name, parent_folder_id, created, modified, size, hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		fsType,
-		VersionNew,
-		entry.DeviceID,
-		fmt.Sprintf("%d", entry.EntryID),
-		entry.IsFolder,
-		entry.IsDeleted,
-		fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
-		entry.Path,
-		entry.Name,
-		fmt.Sprintf("%d", entry.ParentFolderID),
-		entry.Created,
-		entry.Modified,
-		entry.Size,
-		fmt.Sprintf("%d", entry.Hash),
-	)
+				fsType,
+				VersionNew,
+				entry.DeviceID,
+				fmt.Sprintf("%d", entry.EntryID),
+				entry.IsFolder,
+				entry.IsDeleted,
+				fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
+				entry.Path,
+				entry.Name,
+				fmt.Sprintf("%d", entry.ParentFolderID),
+				entry.Created,
+				entry.Modified,
+				entry.Size,
+				entry.Hash,
+			)
+			if err != nil {
+				errCh <- doRollback(tx, errors.WithMessagef(err, "deviceID: %s entryID: %d", entry.DeviceID, entry.EntryID))
+				return
+			}
+		}
 
-	return errors.WithStack(err)
+		err = tx.Commit()
+		if err != nil {
+			errCh <- doRollback(tx, err)
+			return
+		}
+
+		errCh <- nil
+		return
+	}()
+
+	return entriesCh, errCh
 }
 
 func (s *SQLite3) Close() error {
@@ -241,7 +270,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		 FROM new JOIN previous USING (entry_id)
 		 WHERE new.parent_folder_id = previous.parent_folder_id
 		 	AND (
-				-- hash is 0 for folders but that just fine
+				-- hash is not relevant for folders and that's just fine
 				new.hash != previous.hash
 			)
 

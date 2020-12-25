@@ -1,8 +1,11 @@
 package tracker
 
 import (
+	"bufio"
 	"context"
+	"crypto/sha1"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"seborama/pcloud/sdk"
@@ -19,7 +22,7 @@ type sdkClient interface {
 }
 
 type storer interface {
-	AddNewFileSystemEntry(ctx context.Context, fsType db.FSType, entry db.FSEntry) error
+	AddNewFileSystemEntry(ctx context.Context, fsType db.FSType) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
@@ -76,43 +79,48 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 		return errors.New("cannot list pCloud drive contents: no data")
 	}
 
+	fsEntriesCh, errCh := t.store.AddNewFileSystemEntry(ctx, db.PCloudFileSystem)
 	var entries stack
 	entries.add(lf.Metadata)
 
-	for entries.hasNext() {
-		entry := entries.pop()
+	func() {
+		defer close(fsEntriesCh)
 
-		entryID := entry.FileID
-		if entry.IsFolder {
-			for _, e := range entry.Contents {
-				e.Path = filepath.Join(entry.Path, entry.Name)
-				entries.add(e)
+		for entries.hasNext() {
+			entry := entries.pop()
+
+			hash := ""
+			entryID := entry.FileID
+			if entry.IsFolder {
+				for _, e := range entry.Contents {
+					e.Path = filepath.Join(entry.Path, entry.Name)
+					entries.add(e)
+				}
+
+				entryID = entry.FolderID
+			} else {
+				hash = fmt.Sprintf("%d", entry.Hash)
 			}
 
-			entryID = entry.FolderID
-		}
+			fsEntry := db.FSEntry{
+				EntryID:        entryID,
+				IsFolder:       entry.IsFolder,
+				IsDeleted:      entry.IsDeleted,
+				DeletedFileID:  entry.DeletedFileID,
+				Path:           entry.Path,
+				Name:           entry.Name,
+				ParentFolderID: entry.ParentFolderID,
+				Created:        entry.Created.Time,
+				Modified:       entry.Modified.Time,
+				Size:           entry.Size,
+				Hash:           hash,
+			}
 
-		fsEntry := db.FSEntry{
-			EntryID:        entryID,
-			IsFolder:       entry.IsFolder,
-			IsDeleted:      entry.IsDeleted,
-			DeletedFileID:  entry.DeletedFileID,
-			Path:           entry.Path,
-			Name:           entry.Name,
-			ParentFolderID: entry.ParentFolderID,
-			Created:        entry.Created.Time,
-			Modified:       entry.Modified.Time,
-			Size:           entry.Size,
-			Hash:           entry.Hash,
+			fsEntriesCh <- fsEntry
 		}
+	}()
 
-		err = t.store.AddNewFileSystemEntry(ctx, db.PCloudFileSystem, fsEntry)
-		if err != nil {
-			return errors.WithMessagef(err, "deviceID: %s entryID: %d", fsEntry.DeviceID, fsEntry.EntryID)
-		}
-	}
-
-	return nil
+	return <-errCh
 }
 
 // ListLatestLocalContents moves all entries marked as VersionNew to VersionPrevious
@@ -137,55 +145,95 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 
 	folderIDs := map[string]uint64{}
 
-	err = filepath.Walk(path,
-		func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return errors.WithStack(err)
+	fsEntriesCh, errCh := t.store.AddNewFileSystemEntry(ctx, db.LocalFileSystem)
+
+	func() {
+		defer close(fsEntriesCh)
+
+		err = filepath.Walk(path,
+			func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return errors.WithStack(err)
+				}
+
+				if info.Sys().(*syscall.Stat_t).Dev != deviceID {
+					return filepath.SkipDir
+				}
+
+				hash := ""
+				dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean
+				if info.IsDir() {
+					dir = filepath.Clean(path)
+					folderIDs[dir] = info.Sys().(*syscall.Stat_t).Ino // Unix only
+				} else {
+					hash, err = hashFileData(path)
+					if err != nil {
+						return err
+					}
+				}
+
+				// TODO: OSX-specific!!
+				createdTime := time.Unix(int64(info.Sys().(*syscall.Stat_t).Ctimespec.Sec), int64(info.Sys().(*syscall.Stat_t).Ctimespec.Nsec))
+
+				parentFolderID, ok := folderIDs[dir]
+				if !ok {
+					return errors.Errorf("unable to determine parent folder ID for '%s' using key='%s'", path, dir)
+				}
+
+				// TODO: this is currently unix-specific, make more generic to at least include Windows
+				//       see: go/src/os/types_windows.go
+				//       see: https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
+				fsEntry := db.FSEntry{
+					DeviceID:       fmt.Sprintf("%d", deviceID),
+					EntryID:        info.Sys().(*syscall.Stat_t).Ino, // Unix only
+					IsFolder:       info.IsDir(),
+					Path:           filepath.Dir(path),
+					Name:           info.Name(),
+					ParentFolderID: parentFolderID,
+					Created:        createdTime,
+					Modified:       info.ModTime(),
+					Size:           uint64(info.Size()),
+					Hash:           hash, // TODO: needs calculating but only if new / modified file
+				}
+
+				fsEntriesCh <- fsEntry
+
+				return nil
+			})
+	}()
+
+	return <-errCh
+}
+
+func hashFileData(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { f.Close() }()
+
+	cs := sha1.New()
+
+	r := bufio.NewReader(f)
+
+	data := make([]byte, 2_097_152)
+
+	for {
+		n, err := r.Read(data)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
 			}
+			return "", err
+		}
 
-			if info.Sys().(*syscall.Stat_t).Dev != deviceID {
-				return filepath.SkipDir
-			}
+		_, err = cs.Write(data[:n])
+		if err != nil {
+			return "", err
+		}
+	}
 
-			dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean
-			if info.IsDir() {
-				dir = filepath.Clean(path)
-				folderIDs[dir] = info.Sys().(*syscall.Stat_t).Ino // Unix only
-			}
-
-			// TODO: OSX-specific!!
-			createdTime := time.Unix(int64(info.Sys().(*syscall.Stat_t).Ctimespec.Sec), int64(info.Sys().(*syscall.Stat_t).Ctimespec.Nsec))
-
-			parentFolderID, ok := folderIDs[dir]
-			if !ok {
-				return errors.Errorf("unable to determine parent folder ID for '%s' using key='%s'", path, dir)
-			}
-
-			// TODO: this is currently unix-specific, make more generic to at least include Windows
-			//       see: go/src/os/types_windows.go
-			//       see: https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
-			fsEntry := db.FSEntry{
-				DeviceID:       fmt.Sprintf("%d", deviceID),
-				EntryID:        info.Sys().(*syscall.Stat_t).Ino, // Unix only
-				IsFolder:       info.IsDir(),
-				Path:           filepath.Dir(path),
-				Name:           info.Name(),
-				ParentFolderID: parentFolderID,
-				Created:        createdTime,
-				Modified:       info.ModTime(),
-				Size:           uint64(info.Size()),
-				Hash:           0, // TODO: needs calculating but only if new / modified file
-			}
-
-			err = t.store.AddNewFileSystemEntry(ctx, db.LocalFileSystem, fsEntry)
-			if err != nil {
-				return errors.WithMessagef(err, "deviceID: %s entryID: %d", fsEntry.DeviceID, fsEntry.EntryID)
-			}
-
-			return nil
-		})
-
-	return err
+	return fmt.Sprintf("%x", cs.Sum(nil)), nil
 }
 
 // FindPCloudMutations determines all mutations that have taken place in PCloud between
