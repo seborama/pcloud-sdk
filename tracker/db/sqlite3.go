@@ -62,9 +62,68 @@ type FSEntry struct {
 	Hash           string
 }
 
-func (s *SQLite3) AddNewFileSystemEntry(ctx context.Context, fsType FSType) (chan<- FSEntry, <-chan error) {
-	entriesCh := make(chan FSEntry, 100)
-	errCh := make(chan error, 1)
+func (s *SQLite3) AddNewFileSystemEntriesV2(ctx context.Context, fsType FSType, entriesCh <-chan FSEntry) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	for entry := range entriesCh {
+		_, err := tx.ExecContext(
+			ctx,
+			`INSERT INTO "filesystem"
+			(type, version, device_id, entry_id, is_folder, is_deleted, deleted_file_id, path, name, parent_folder_id, created, modified, size, hash)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			fsType,
+			VersionNew,
+			entry.DeviceID,
+			fmt.Sprintf("%d", entry.EntryID),
+			entry.IsFolder,
+			entry.IsDeleted,
+			fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
+			entry.Path,
+			entry.Name,
+			fmt.Sprintf("%d", entry.ParentFolderID),
+			entry.Created,
+			entry.Modified,
+			entry.Size,
+			entry.Hash,
+		)
+		if err != nil {
+			return doRollback(tx, errors.WithMessagef(err, "deviceID: %s entryID: %d", entry.DeviceID, entry.EntryID))
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return doRollback(tx, err)
+	}
+
+	return nil
+}
+
+type config struct {
+	entriesChSize int
+	errChSize     int
+}
+
+type Options func(*config)
+
+func WithEntriesChSize(n int) Options {
+	return func(obj *config) {
+		obj.entriesChSize = n
+	}
+}
+
+func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, opts ...Options) (chan<- FSEntry, <-chan error) {
+	cfg := config{
+		entriesChSize: 100,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	entriesCh := make(chan FSEntry, cfg.entriesChSize)
+	errCh := make(chan error, 0)
 
 	go func() {
 		defer close(errCh)

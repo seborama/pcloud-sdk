@@ -11,13 +11,13 @@ import (
 )
 
 func TestSQLite3_MigrationsSuccess(t *testing.T) {
-	const dbPath = "./data_test"
+	const dbPath = "/tmp/data_schema_migrations_test"
 	ctx := context.Background()
 
 	err := os.RemoveAll(dbPath)
 	require.NoError(t, err)
 
-	err = os.Mkdir(dbPath, 0x770)
+	err = os.MkdirAll(dbPath, 0700)
 	require.NoError(t, err)
 	defer func() { _ = os.RemoveAll(dbPath) }()
 

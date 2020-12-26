@@ -22,7 +22,7 @@ type sdkClient interface {
 }
 
 type storer interface {
-	AddNewFileSystemEntry(ctx context.Context, fsType db.FSType) (chan<- db.FSEntry, <-chan error)
+	AddNewFileSystemEntries(ctx context.Context, fsType db.FSType, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
@@ -79,12 +79,10 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 		return errors.New("cannot list pCloud drive contents: no data")
 	}
 
-	fsEntriesCh, errCh := t.store.AddNewFileSystemEntry(ctx, db.PCloudFileSystem)
-	var entries stack
-	entries.add(lf.Metadata)
-
-	func() {
-		defer close(fsEntriesCh)
+	err = func() error {
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem)
+		var entries stack
+		entries.add(lf.Metadata)
 
 		for entries.hasNext() {
 			entry := entries.pop()
@@ -116,11 +114,19 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 				Hash:           hash,
 			}
 
-			fsEntriesCh <- fsEntry
+			select {
+			case err := <-errCh:
+				close(fsEntriesCh)
+				return errors.WithStack(err)
+			case fsEntriesCh <- fsEntry:
+			}
 		}
+		close(fsEntriesCh)
+
+		return errors.WithStack(<-errCh)
 	}()
 
-	return <-errCh
+	return err
 }
 
 // ListLatestLocalContents moves all entries marked as VersionNew to VersionPrevious
@@ -145,10 +151,9 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 
 	folderIDs := map[string]uint64{}
 
-	fsEntriesCh, errCh := t.store.AddNewFileSystemEntry(ctx, db.LocalFileSystem)
-
-	func() {
-		defer close(fsEntriesCh)
+	err = func() error {
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem)
+		isFSEntriesChOpened := true
 
 		err = filepath.Walk(path,
 			func(path string, info os.FileInfo, err error) error {
@@ -196,13 +201,24 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 					Hash:           hash, // TODO: needs calculating but only if new / modified file
 				}
 
-				fsEntriesCh <- fsEntry
-
-				return nil
+				select {
+				case err := <-errCh:
+					close(fsEntriesCh)
+					isFSEntriesChOpened = false
+					return errors.WithStack(err)
+				case fsEntriesCh <- fsEntry:
+					return nil
+				}
 			})
+		if isFSEntriesChOpened {
+			close(fsEntriesCh)
+			isFSEntriesChOpened = false
+			return errors.WithStack(<-errCh)
+		}
+		return err
 	}()
 
-	return <-errCh
+	return err
 }
 
 func hashFileData(path string) (string, error) {
