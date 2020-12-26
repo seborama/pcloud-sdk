@@ -64,7 +64,14 @@ type folderChildren struct {
 // ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
 // (includes removing all entries marked as VersionPrevious) and then queries the contents
 // of '/' from PCloud recursively and stores the results as VersionNew.
-func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
+func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options) error {
+	cfg := config{
+		entriesChSize: 100,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
 	if err != nil {
 		return err
@@ -132,7 +139,14 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context) error {
 // ListLatestLocalContents moves all entries marked as VersionNew to VersionPrevious
 // (includes removing all entries marked as VersionPrevious) and then queries the contents
 // of '/' from PCloud recursively and stores the results as VersionNew.
-func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) error {
+func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts ...Options) error {
+	cfg := config{
+		entriesChSize: 100,
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.LocalFileSystem)
 	if err != nil {
 		return err
@@ -219,6 +233,18 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string) erro
 	}()
 
 	return err
+}
+
+type config struct {
+	entriesChSize int
+}
+
+type Options func(*config)
+
+func WithEntriesChSize(n int) Options {
+	return func(obj *config) {
+		obj.entriesChSize = n
+	}
 }
 
 func hashFileData(path string) (string, error) {

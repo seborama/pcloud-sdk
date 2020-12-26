@@ -88,7 +88,7 @@ func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
 		Return(lf, nil).
 		Once()
 
-	err := suite.tracker.ListLatestPCloudContents(suite.ctx)
+	err := suite.tracker.ListLatestPCloudContents(suite.ctx, tracker.WithEntriesChSize(0))
 	suite.Require().NoError(err)
 
 	expected := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
@@ -491,7 +491,7 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 	err = ioutil.WriteFile(filepath.Join(suite.dbPath, "local/Folder3/File3"), []byte("This is File3"), 0600)
 	suite.Require().NoError(err)
 
-	err = suite.tracker.ListLatestLocalContents(suite.ctx, filepath.Join(suite.dbPath, "local"))
+	err = suite.tracker.ListLatestLocalContents(suite.ctx, filepath.Join(suite.dbPath, "local"), tracker.WithEntriesChSize(0))
 	suite.Require().NoError(err)
 
 	expected := []db.FSEntry{

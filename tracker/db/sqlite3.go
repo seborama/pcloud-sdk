@@ -104,7 +104,6 @@ func (s *SQLite3) AddNewFileSystemEntriesV2(ctx context.Context, fsType FSType, 
 
 type config struct {
 	entriesChSize int
-	errChSize     int
 }
 
 type Options func(*config)
@@ -122,6 +121,7 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, op
 	for _, opt := range opts {
 		opt(&cfg)
 	}
+
 	entriesCh := make(chan FSEntry, cfg.entriesChSize)
 	errCh := make(chan error, 0)
 
