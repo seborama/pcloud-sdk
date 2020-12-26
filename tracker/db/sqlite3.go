@@ -245,12 +245,14 @@ func (s *SQLite3) GetLatestFileSystemEntries(ctx context.Context, fsType FSType)
 	return s.getFileSystemEntries(ctx, fsType, VersionNew)
 }
 
+// FSMutation contains a filesystem mutation: type and details.
 type FSMutation struct {
 	Type MutationType
 	Version
 	FSEntry
 }
 
+// MutationType describes the type of mutation of a filesystem.
 type MutationType string
 
 const (
@@ -286,7 +288,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			previous.modified,
 			previous.size,
 			previous.hash
-		 FROM previous LEFT OUTER JOIN new USING (entry_id)
+		 FROM previous LEFT OUTER JOIN new USING (device_id, entry_id)
 		 WHERE new.entry_id IS NULL
 		
 		 UNION
@@ -306,7 +308,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.modified,
 			new.size,
 			new.hash
-		 FROM new LEFT OUTER JOIN previous USING (entry_id)
+		 FROM new LEFT OUTER JOIN previous USING (device_id, entry_id)
 		 WHERE previous.entry_id IS NULL
 
 		 UNION
@@ -326,7 +328,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.modified,
 			new.size,
 			new.hash
-		 FROM new JOIN previous USING (entry_id)
+		 FROM new JOIN previous USING (device_id, entry_id)
 		 WHERE new.parent_folder_id = previous.parent_folder_id
 		 	AND (
 				-- hash is not relevant for folders and that's just fine
@@ -350,7 +352,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.modified,
 			new.size,
 			new.hash
-		  FROM new JOIN previous USING (entry_id)
+		  FROM new JOIN previous USING (device_id, entry_id)
 		 -- it should be noted that a file may both move and change
 		 WHERE new.parent_folder_id != previous.parent_folder_id
 		 `,

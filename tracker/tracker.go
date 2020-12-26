@@ -87,7 +87,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 	}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem)
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem, db.WithEntriesChSize(cfg.entriesChSize))
 		var entries stack
 		entries.add(lf.Metadata)
 
@@ -166,7 +166,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 	folderIDs := map[string]uint64{}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem)
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem, db.WithEntriesChSize(cfg.entriesChSize))
 		isFSEntriesChOpened := true
 
 		err = filepath.Walk(path,

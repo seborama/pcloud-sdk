@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker"
@@ -48,10 +50,19 @@ func analyse(c *cli.Context) error {
 		return err
 	}
 
+	fmt.Println("ListLatestPCloudContents...")
 	err = track.ListLatestPCloudContents(ctx)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("FindPCloudMutations...")
+	fsm, err := track.FindPCloudMutations(ctx)
+	j, err := json.MarshalIndent(fsm, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println("PCloud mutations:", string(j))
 
 	return nil
 }

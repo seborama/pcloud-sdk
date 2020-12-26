@@ -23,5 +23,7 @@ var SQLite3 = []string{
 			PRIMARY KEY (type, version, device_id, entry_id)
 		);
 
+		CREATE INDEX IF NOT EXISTS device_entry ON filesystem (device_id, entry_id);
+
 		COMMIT;`,
 }
