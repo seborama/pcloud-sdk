@@ -7,24 +7,24 @@ import (
 	"github.com/google/uuid"
 )
 
-func (suite *IntegrationTestSuite) Test_GetFileLink() {
+func (testsuite *IntegrationTestSuite) Test_GetFileLink() {
 	fileName := "go_pCloud_" + uuid.New().String() + ".txt"
 
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(suite.testFolderPath+"/"+fileName))
-	suite.Require().NoError(err)
+	f, err := testsuite.pcc.FileOpen(testsuite.ctx, sdk.O_CREAT|sdk.O_EXCL, sdk.T4FileByPath(testsuite.testFolderPath+"/"+fileName))
+	testsuite.Require().NoError(err)
 
-	fdt, err := suite.pcc.FileWrite(suite.ctx, f.FD, []byte(Lipsum))
-	suite.Require().NoError(err)
-	suite.Require().EqualValues(len(Lipsum), fdt.Bytes)
+	fdt, err := testsuite.pcc.FileWrite(testsuite.ctx, f.FD, []byte(Lipsum))
+	testsuite.Require().NoError(err)
+	testsuite.Require().EqualValues(len(Lipsum), fdt.Bytes)
 
-	err = suite.pcc.FileClose(suite.ctx, f.FD)
-	suite.Require().NoError(err)
+	err = testsuite.pcc.FileClose(testsuite.ctx, f.FD)
+	testsuite.Require().NoError(err)
 
-	fl, err := suite.pcc.GetFileLink(suite.ctx, sdk.T3FileByPath(suite.testFolderPath+"/"+fileName), true, "", 0, false)
-	suite.Require().NoError(err)
-	suite.Require().Equal(0, fl.Result)
-	suite.Require().GreaterOrEqual(len(fl.Path), 10)
-	suite.Require().EqualValues('/', fl.Path[0])
-	suite.Require().True(fl.Expires.After(time.Now().Add(time.Hour)))
-	suite.Require().GreaterOrEqual(len(fl.Hosts), 1)
+	fl, err := testsuite.pcc.GetFileLink(testsuite.ctx, sdk.T3FileByPath(testsuite.testFolderPath+"/"+fileName), true, "", 0, false)
+	testsuite.Require().NoError(err)
+	testsuite.Require().Equal(0, fl.Result)
+	testsuite.Require().GreaterOrEqual(len(fl.Path), 10)
+	testsuite.Require().EqualValues('/', fl.Path[0])
+	testsuite.Require().True(fl.Expires.After(time.Now().Add(time.Hour)))
+	testsuite.Require().GreaterOrEqual(len(fl.Hosts), 1)
 }

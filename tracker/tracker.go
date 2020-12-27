@@ -3,6 +3,8 @@ package tracker
 import (
 	"bufio"
 	"context"
+
+	// nolint:gosec
 	"crypto/sha1"
 	"fmt"
 	"io"
@@ -54,11 +56,6 @@ func (t *Tracker) Track(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-type folderChildren struct {
-	Name     string
-	ChildIDs []uint64
 }
 
 // ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
@@ -122,7 +119,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 			}
 
 			select {
-			case err := <-errCh:
+			case err = <-errCh:
 				close(fsEntriesCh)
 				return errors.WithStack(err)
 			case fsEntriesCh <- fsEntry:
@@ -192,7 +189,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 				}
 
 				// TODO: OSX-specific!!
-				createdTime := time.Unix(int64(info.Sys().(*syscall.Stat_t).Ctimespec.Sec), int64(info.Sys().(*syscall.Stat_t).Ctimespec.Nsec))
+				createdTime := time.Unix(info.Sys().(*syscall.Stat_t).Ctimespec.Sec, info.Sys().(*syscall.Stat_t).Ctimespec.Nsec)
 
 				parentFolderID, ok := folderIDs[dir]
 				if !ok {
@@ -254,6 +251,7 @@ func hashFileData(path string) (string, error) {
 	}
 	defer func() { f.Close() }()
 
+	// nolint: gosec
 	cs := sha1.New()
 
 	r := bufio.NewReader(f)
@@ -292,16 +290,12 @@ type stack struct {
 	entries []*sdk.Metadata
 }
 
-func (s *stack) add(entry sdk.Metadata) {
-	s.entries = append(s.entries, &entry)
+func (s *stack) add(entry *sdk.Metadata) {
+	s.entries = append(s.entries, entry)
 }
 
 func (s *stack) hasNext() bool {
 	return len(s.entries) > 0
-}
-
-func (s *stack) len() int {
-	return len(s.entries)
 }
 
 func (s *stack) pop() *sdk.Metadata {

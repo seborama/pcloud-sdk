@@ -72,13 +72,18 @@ func WithGlobalOptionPassword(password string) ClientOption {
 // Defaults to 31536000 and its maximum is 63072000.
 // https://docs.pcloud.com/methods/intro/global_parameters.html
 func WithGlobalOptionAuthExpire(authExpire time.Duration) ClientOption {
+	const (
+		defaultSeconds = 31536000
+		maxSeconds     = 63072000
+	)
+
 	return func(q *url.Values) {
 		e := int64(authExpire.Seconds())
 		if e < 0 {
-			e = 31536000
+			e = defaultSeconds
 		}
-		if e > 63072000 {
-			e = 63072000
+		if e > maxSeconds {
+			e = maxSeconds
 		}
 		q.Add("authexpire", fmt.Sprintf("%d", e))
 	}
@@ -89,13 +94,18 @@ func WithGlobalOptionAuthExpire(authExpire time.Duration) ClientOption {
 // after these seconds since the current moment. Defaults to 2678400 and its maximum is 5356800.
 // https://docs.pcloud.com/methods/intro/global_parameters.html
 func WithGlobalOptionAuthInactiveExpire(authInactiveExpire time.Duration) ClientOption {
+	const (
+		defaultSeconds = 2678400
+		maxSeconds     = 5356800
+	)
+
 	return func(q *url.Values) {
 		e := int64(authInactiveExpire.Seconds())
 		if e < 0 {
-			e = 2678400
+			e = defaultSeconds
 		}
-		if e > 5356800 {
-			e = 5356800
+		if e > maxSeconds {
+			e = maxSeconds
 		}
 		q.Add("authinactiveexpire", fmt.Sprintf("%d", e))
 	}

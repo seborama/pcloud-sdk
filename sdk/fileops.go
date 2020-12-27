@@ -13,10 +13,11 @@ type File struct {
 	FileID uint64
 }
 
+// nolint: golint, stylecheck
 const (
 	// O_WRITE you do not need to specify O_WRITE even if you intend to write to the file.
-	//However that will preform write access control and quota checking and you will
-	//get possible errors during open, not at the first write.
+	// However that will preform write access control and quota checking and you will
+	// get possible errors during open, not at the first write.
 	O_WRITE = 0x0002
 
 	// O_CREAT if is set, file_open will create the file. In this case full "path"
@@ -89,7 +90,7 @@ func (c *Client) FileWrite(ctx context.Context, fd uint64, data []byte, opts ...
 // condition).
 // You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
 // https://docs.pcloud.com/methods/fileops/file_read.html
-func (c *Client) FileRead(ctx context.Context, fd uint64, count uint64, opts ...ClientOption) ([]byte, error) {
+func (c *Client) FileRead(ctx context.Context, fd, count uint64, opts ...ClientOption) ([]byte, error) {
 	q := toQuery(opts...)
 
 	q.Add("fd", fmt.Sprintf("%d", fd))
@@ -107,7 +108,7 @@ func (c *Client) FileRead(ctx context.Context, fd uint64, count uint64, opts ...
 // You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
 // offset starts at 0.
 // https://docs.pcloud.com/methods/fileops/file_pread.html
-func (c *Client) FilePRead(ctx context.Context, fd uint64, count, offset uint64, opts ...ClientOption) ([]byte, error) {
+func (c *Client) FilePRead(ctx context.Context, fd, count, offset uint64, opts ...ClientOption) ([]byte, error) {
 	q := toQuery(opts...)
 
 	q.Add("fd", fmt.Sprintf("%d", fd))
@@ -149,7 +150,7 @@ func T5MD5(md5 string) T5SHA1OrMD5 {
 // offset starts at 0.
 // You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
 // https://docs.pcloud.com/methods/fileops/file_pread_ifmod.html
-func (c *Client) FilePReadIfMod(ctx context.Context, fd uint64, count, offset uint64, checksum T5SHA1OrMD5, opts ...ClientOption) ([]byte, error) {
+func (c *Client) FilePReadIfMod(ctx context.Context, fd, count, offset uint64, checksum T5SHA1OrMD5, opts ...ClientOption) ([]byte, error) {
 	q := toQuery(opts...)
 	checksum(q)
 
@@ -186,7 +187,7 @@ type PFileChecksum struct {
 //
 // You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
 // https://docs.pcloud.com/methods/fileops/file_checksum.html
-func (c *Client) FileChecksum(ctx context.Context, fd uint64, count, offset uint64, opts ...ClientOption) (*PFileChecksum, error) {
+func (c *Client) FileChecksum(ctx context.Context, fd, count, offset uint64, opts ...ClientOption) (*PFileChecksum, error) {
 	q := toQuery(opts...)
 
 	q.Add("fd", fmt.Sprintf("%d", fd))
@@ -230,7 +231,7 @@ type FileSeek struct {
 // 1        after current position
 // 2        after end of the file.
 // https://docs.pcloud.com/methods/fileops/file_seek.html
-func (c *Client) FileSeek(ctx context.Context, fd uint64, offset uint64, whenceOpt Whence, opts ...ClientOption) (*FileSeek, error) {
+func (c *Client) FileSeek(ctx context.Context, fd, offset uint64, whenceOpt Whence, opts ...ClientOption) (*FileSeek, error) {
 	q := toQuery(opts...)
 
 	q.Add("fd", fmt.Sprintf("%d", fd))

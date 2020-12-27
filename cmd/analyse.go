@@ -64,6 +64,10 @@ func analyse(c *cli.Context) error {
 
 	fmt.Println("FindPCloudMutations...")
 	fsm, err := track.FindPCloudMutations(ctx)
+	if err != nil {
+		return err
+	}
+
 	j, err := json.MarshalIndent(fsm, "", "  ")
 	if err != nil {
 		return err

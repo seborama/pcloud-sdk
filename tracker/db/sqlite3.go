@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	// sqllite3 sql driver.
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 )
@@ -35,18 +36,17 @@ func NewSQLite3(ctx context.Context, dbPath string) (*SQLite3, error) {
 	}, nil
 }
 
-type TrackingInfo struct {
-	DiffID    uint64
-	Timestamp time.Time
-}
-
+// Version is used to distinguish the two entry-sets of file system data in the database.
 type Version string
 
 const (
+	// VersionPrevious is the previous version of file system entries in the database.
 	VersionPrevious Version = "P"
-	VersionNew              = "N"
+	// VersionNew is the newer version of file system entries in the database.
+	VersionNew Version = "N"
 )
 
+// FSEntry is a set of details about an entry (folder or file) in the file system.
 type FSEntry struct {
 	DeviceID       string // for cloud, this could be used to distinguish multiple accounts on the same cloud provider
 	EntryID        uint64
@@ -62,46 +62,6 @@ type FSEntry struct {
 	Hash           string
 }
 
-func (s *SQLite3) AddNewFileSystemEntriesV2(ctx context.Context, fsType FSType, entriesCh <-chan FSEntry) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	for entry := range entriesCh {
-		_, err := tx.ExecContext(
-			ctx,
-			`INSERT INTO "filesystem"
-			(type, version, device_id, entry_id, is_folder, is_deleted, deleted_file_id, path, name, parent_folder_id, created, modified, size, hash)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			fsType,
-			VersionNew,
-			entry.DeviceID,
-			fmt.Sprintf("%d", entry.EntryID),
-			entry.IsFolder,
-			entry.IsDeleted,
-			fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
-			entry.Path,
-			entry.Name,
-			fmt.Sprintf("%d", entry.ParentFolderID),
-			entry.Created,
-			entry.Modified,
-			entry.Size,
-			entry.Hash,
-		)
-		if err != nil {
-			return doRollback(tx, errors.WithMessagef(err, "deviceID: %s entryID: %d", entry.DeviceID, entry.EntryID))
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return doRollback(tx, err)
-	}
-
-	return nil
-}
-
 type config struct {
 	entriesChSize int
 }
@@ -114,7 +74,11 @@ func WithEntriesChSize(n int) Options {
 	}
 }
 
-// AddNewFileSystemEntries adds a new file system entry
+// AddNewFileSystemEntries adds a new file system entry.
+// It returns two channels:
+// - the first is used to supply data to this method
+// - the second is a channel of error type should this function encounter an error.
+// Refer to tests and main code for example uses.
 func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, opts ...Options) (chan<- FSEntry, <-chan error) {
 	cfg := config{
 		entriesChSize: 100,
@@ -124,7 +88,7 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, op
 	}
 
 	entriesCh := make(chan FSEntry, cfg.entriesChSize)
-	errCh := make(chan error, 0)
+	errCh := make(chan error)
 
 	go func() {
 		defer close(errCh)
@@ -136,7 +100,7 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, op
 		}
 
 		for entry := range entriesCh {
-			_, err := tx.ExecContext(
+			_, err = tx.ExecContext(
 				ctx,
 				`INSERT INTO "filesystem"
 			(type, version, device_id, entry_id, is_folder, is_deleted, deleted_file_id, path, name, parent_folder_id, created, modified, size, hash)
@@ -169,7 +133,6 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, op
 		}
 
 		errCh <- nil
-		return
 	}()
 
 	return entriesCh, errCh
@@ -210,7 +173,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 
 	for rows.Next() {
 		entry := FSEntry{}
-		err := rows.Scan(
+		err = rows.Scan(
 			&entry.DeviceID,
 			&entry.EntryID,
 			&entry.IsFolder,
@@ -261,20 +224,27 @@ type FSMutation struct {
 type MutationType string
 
 const (
-	MutationTypeDeleted  MutationType = "deleted"
-	MutationTypeCreated               = "created"
-	MutationTypeModified              = "modified"
-	MutationTypeMoved                 = "moved"
+	// MutationTypeDeleted means a deletion on the file system.
+	MutationTypeDeleted MutationType = "deleted"
+	// MutationTypeCreated means a creation on the file system.
+	MutationTypeCreated MutationType = "created"
+	// MutationTypeModified means a file content modification on the file system.
+	MutationTypeModified MutationType = "modified"
+	// MutationTypeMoved means a file move on the file system.
+	MutationTypeMoved MutationType = "moved"
 )
 
+// GetPCloudMutations returns a slice of mutations on the pCloud file system.
+// nolint: funlen
 func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) {
+	// nolint: gosec
 	rows, err := s.db.QueryContext(
 		ctx,
 		`WITH previous AS (SELECT * FROM filesystem
 						   WHERE version = '`+string(VersionPrevious)+`'
 						     AND is_deleted = false),
 			  new AS (SELECT * FROM filesystem
-					  WHERE version = '`+VersionNew+`'
+					  WHERE version = '`+string(VersionNew)+`'
 					  AND is_deleted = false
 					  AND type = '`+string(PCloudFileSystem)+`')
 
@@ -299,7 +269,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		 UNION
 		
 		 SELECT
-			'`+MutationTypeCreated+`',
+			'`+string(MutationTypeCreated)+`',
 			new.version,
 			new.device_id,
 			new.entry_id,
@@ -319,7 +289,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		 UNION
 
 		 SELECT
-			'`+MutationTypeModified+`',
+			'`+string(MutationTypeModified)+`',
 			new.version,
 			new.device_id,
 			new.entry_id,
@@ -343,7 +313,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		 UNION
 
 		 SELECT
-			'`+MutationTypeMoved+`',
+			'`+string(MutationTypeMoved)+`',
 			new.version,
 			new.device_id,
 			new.entry_id,
@@ -371,7 +341,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 
 	for rows.Next() {
 		fsMutation := FSMutation{}
-		err := rows.Scan(
+		err = rows.Scan(
 			&fsMutation.Type,
 			&fsMutation.Version,
 			&fsMutation.DeviceID,
@@ -405,13 +375,15 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 type FSType string
 
 const (
-	LocalFileSystem  FSType = "local"
-	PCloudFileSystem        = "pCloud"
+	// LocalFileSystem represents the local file system (non-cloud).
+	LocalFileSystem FSType = "local"
+	// PCloudFileSystem represents the pCloud file system.
+	PCloudFileSystem FSType = "pCloud"
 )
 
 // MarkNewFileSystemEntriesAsPrevious clears the "previous" file system entries for the specified
 // file system and marks the "new" file system entries as "previous".
-// TODO: this needs to be strenghtened with a "rollback" such that if the analysis of the current
+// TODO: this needs to be strengthened with a "rollback" such that if the analysis of the current
 // state between "previous" and "new" did not copmlete, then either do not shift versions OR
 // update "new" and do NOT touch previous.
 func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType FSType) error {

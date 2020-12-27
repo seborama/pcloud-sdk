@@ -22,7 +22,7 @@ type LogoutResult struct {
 // https://docs.pcloud.com/methods/intro/authentication.html
 func (c *Client) LoginV1(ctx context.Context, opts ...ClientOption) error {
 	if c.auth != "" {
-		return errors.New("Login called while already logged in. Please call Logout first")
+		return errors.New("'Login' called while already logged in. Please call Logout first")
 	}
 
 	q := toQuery(opts...)
@@ -74,7 +74,7 @@ func osID() string {
 // https://docs.pcloud.com/methods/intro/authentication.html
 func (c *Client) Login(ctx context.Context, otpCodeOpt string, opts ...ClientOption) error {
 	if c.auth != "" {
-		return errors.New("Login called while already logged in. Please call Logout first")
+		return errors.New("'Login' called while already logged in. Please call Logout first")
 	}
 
 	q := toQuery(opts...)

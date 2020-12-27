@@ -38,7 +38,7 @@ func NewClient(c *http.Client) *Client {
 
 // do executes an HTTPS (enforced) request to the pCloud API endpoint.
 // it returns the content-type string, the data from the response and an error, if applicable.
-func (c *Client) do(ctx context.Context, method string, endpoint string, query url.Values, contentType string, data []byte) (string, []byte, error) {
+func (c *Client) do(ctx context.Context, method, endpoint string, query url.Values, contentType string, data []byte) (string, []byte, error) {
 	if c.auth != "" {
 		query.Add("auth", c.auth)
 	}
@@ -56,7 +56,7 @@ func (c *Client) do(ctx context.Context, method string, endpoint string, query u
 	}
 
 	req.Header.Add("Connection", "Keep-Alive")
-	// req.Header.Add("Keep-Alive", "timeout=600, max=1000")
+	// consider adding parameters to add: req.Header.Add("Keep-Alive", "timeout=nnn, max=nnn")
 	req.Header.Add("Content-Type", contentType)
 
 	c.lock.Lock()
@@ -140,18 +140,16 @@ type result struct {
 }
 
 // Result_ returns the Result property.
+// nolint: golint
 func (r result) Result_() int { return r.Result }
 
 // Error_ returns the Error property.
+// nolint: golint
 func (r result) Error_() string { return r.Error }
 
 type resulter interface {
 	Result_() int
 	Error_() string
-}
-
-type resultGetter interface {
-	GetResult() result
 }
 
 // parseAPIOutput is a curry for parseResult.

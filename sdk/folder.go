@@ -14,7 +14,7 @@ const RootFolderID = uint64(0)
 // CreeateFolder, DeleteFolder, ListFolder, etc.
 type FSList struct {
 	result
-	Metadata Metadata
+	Metadata *Metadata
 }
 
 // Metadata contains properties related to folder and file information.
@@ -37,8 +37,8 @@ type Metadata struct {
 	DeletedFileID  uint64 // this may be set by RenameFile, for instance
 
 	// Folder-specific
-	FolderID uint64     `json:"folderid,omitempty"`
-	Contents []Metadata `json:"contents,omitempty"`
+	FolderID uint64      `json:"folderid,omitempty"`
+	Contents []*Metadata `json:"contents,omitempty"`
 
 	// File-specific
 	FileID uint64 `json:"fileid,omitempty"`

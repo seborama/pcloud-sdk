@@ -285,7 +285,7 @@ const (
 	// ErrTFARequired is returned when two-factor authentication is required to login.
 	ErrTFARequired = 2297
 
-	// ErrSSLError is returned when sSL error occured. Check sslerror for more information.
+	// ErrSSLError is returned when sSL error occurred. Check sslerror for more information.
 	ErrSSLError = 3000
 
 	// ErrUnableToCreateFileThumb is returned when could not create thumb from the given file.

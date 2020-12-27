@@ -63,7 +63,7 @@ func (c *Client) RenameFile(ctx context.Context, file T3PathOrFileID, destinatio
 // CopyFile takes one file and copies it as another file in the user's filesystem.
 // Expects fileid or path to identify the source file and tofolderid+toname or topath to
 // identify destination filename.
-// If toname is ommited, original filename is used.
+// If toname is omitted, original filename is used.
 // The same is true if the last character of topath is '/' (slash), thus identifying only the
 // target folder. The target file will be separate, newly created (with current creation time
 // unless old file is overwritten) independent file.
@@ -134,12 +134,12 @@ func (c *Client) ChecksumFile(ctx context.Context, file T3PathOrFileID, opts ...
 type FileUpload struct {
 	result
 	FileIDs   []uint64
-	Checksums []Checksums
-	Metadata  []Metadata
+	Checksums []*ChecksumSet
+	Metadata  []*Metadata
 }
 
-// Checksums contains various checksum data.
-type Checksums struct {
+// ChecksumSet contains various checksum hashes.
+type ChecksumSet struct {
 	SHA1   string
 	MD5    string
 	SHA256 string
@@ -167,7 +167,7 @@ type Checksums struct {
 // data (if any) from the current position will be uplaoded!
 //
 // https://docs.pcloud.com/methods/file/uploadfile.html
-func (c *Client) UploadFile(ctx context.Context, folder T1PathOrFolderID, files map[string]*os.File, noPartialOpt bool, progressHashOpt string, renameIfExistsOpt bool, mTimeOpt time.Time, cTimeOpt time.Time, opts ...ClientOption) (*FileUpload, error) {
+func (c *Client) UploadFile(ctx context.Context, folder T1PathOrFolderID, files map[string]*os.File, noPartialOpt bool, progressHashOpt string, renameIfExistsOpt bool, mTimeOpt, cTimeOpt time.Time, opts ...ClientOption) (*FileUpload, error) {
 	q := toQuery(opts...)
 	folder(q)
 

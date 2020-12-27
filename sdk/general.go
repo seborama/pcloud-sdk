@@ -132,7 +132,7 @@ func (c *Client) GetFileHistory(ctx context.Context, fileID uint64, opts ...Clie
 // generated after that time.
 // Another alternative to providing diffid or after is providing last, which will return last
 // number of events with highest diffids (that is the last events).
-// Especially setting last to 0 is optimized to do nothing more than return the last diffid.
+// Especially setting last to 0 is optimised to do nothing more than return the last diffid.
 // If the optional parameter block is set and there are no changes since the provided diffid,
 // the connection will block until an event arrives. Blocking only works when diffid is provided
 // and does not work with either after or last.
@@ -152,9 +152,9 @@ func (c *Client) GetFileHistory(ctx context.Context, fileID uint64, opts ...Clie
 // comprehensive list of compacting activities, so you should generally re-download from zero
 // rather than trying to cope with compacting.
 // https://docs.pcloud.com/methods/general/diff.html
-////////////////////////////////
+// //////////////////////////////
 // TODO: add support for shares.
-////////////////////////////////
+// //////////////////////////////
 func (c *Client) Diff(ctx context.Context, diffID uint64, after time.Time, last uint64, block bool, limit uint64, opts ...ClientOption) (*DiffResult, error) {
 	q := toQuery(opts...)
 

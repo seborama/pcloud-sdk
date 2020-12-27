@@ -4,26 +4,26 @@ import (
 	"time"
 )
 
-func (suite *IntegrationTestSuite) Test_UserInfo() {
-	ui, err := suite.pcc.UserInfo(suite.ctx)
-	suite.Require().NoError(err)
-	suite.Require().NotEmpty(ui.APIServer)
-	suite.Require().NotEmpty(ui.Email)
+func (testsuite *IntegrationTestSuite) Test_UserInfo() {
+	ui, err := testsuite.pcc.UserInfo(testsuite.ctx)
+	testsuite.Require().NoError(err)
+	testsuite.Require().NotEmpty(ui.APIServer)
+	testsuite.Require().NotEmpty(ui.Email)
 }
 
-func (suite *IntegrationTestSuite) Test_GetFileHistory() {
-	dr, err := suite.pcc.GetFileHistory(suite.ctx, suite.testFileID)
-	suite.Require().NoError(err)
-	suite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
-	suite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
-	suite.Require().EqualValues(suite.testFileID, dr.Entries[0].Metadata.FileID)
-	suite.Require().EqualValues(suite.testFolderID, dr.Entries[0].Metadata.ParentFolderID)
+func (testsuite *IntegrationTestSuite) Test_GetFileHistory() {
+	dr, err := testsuite.pcc.GetFileHistory(testsuite.ctx, testsuite.testFileID)
+	testsuite.Require().NoError(err)
+	testsuite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
+	testsuite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
+	testsuite.Require().EqualValues(testsuite.testFileID, dr.Entries[0].Metadata.FileID)
+	testsuite.Require().EqualValues(testsuite.testFolderID, dr.Entries[0].Metadata.ParentFolderID)
 }
 
-func (suite *IntegrationTestSuite) Test_Diff() {
-	dr, err := suite.pcc.Diff(suite.ctx, 0, time.Now().Add(-10*time.Minute), 0, false, 0)
-	suite.Require().NoError(err)
-	suite.Require().GreaterOrEqual(dr.DiffID, uint64(1))
-	suite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
-	suite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
+func (testsuite *IntegrationTestSuite) Test_Diff() {
+	dr, err := testsuite.pcc.Diff(testsuite.ctx, 0, time.Now().Add(-10*time.Minute), 0, false, 0)
+	testsuite.Require().NoError(err)
+	testsuite.Require().GreaterOrEqual(dr.DiffID, uint64(1))
+	testsuite.Require().GreaterOrEqual(dr.Entries[0].DiffID, uint64(1))
+	testsuite.Require().NotEmpty(dr.Entries[0].Metadata.Name)
 }

@@ -35,44 +35,44 @@ func TestIntegrationSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (suite *IntegrationTestSuite) SetupSuite() {
-	suite.ctx = context.Background()
-	suite.dbPath = "/tmp/data_test"
+func (testsuite *IntegrationTestSuite) SetupSuite() {
+	testsuite.ctx = context.Background()
+	testsuite.dbPath = "/tmp/data_test"
 }
 
-func (suite *IntegrationTestSuite) TearDownSuite() {
-	_ = os.RemoveAll(suite.dbPath)
+func (testsuite *IntegrationTestSuite) TearDownSuite() {
+	_ = os.RemoveAll(testsuite.dbPath)
 }
 
-func (suite *IntegrationTestSuite) BeforeTest(suiteName, testName string) {
-	suite.pCloudClient = &pCloudClientMock{}
+func (testsuite *IntegrationTestSuite) BeforeTest(suiteName, testName string) {
+	testsuite.pCloudClient = &pCloudClientMock{}
 
-	suite.makeDB()
+	testsuite.makeDB()
 
-	tracker, err := tracker.NewTracker(suite.ctx, suite.pCloudClient, suite.store)
-	suite.Require().NoError(err)
-	suite.tracker = tracker
+	track, err := tracker.NewTracker(testsuite.ctx, testsuite.pCloudClient, testsuite.store)
+	testsuite.Require().NoError(err)
+	testsuite.tracker = track
 }
 
-func (suite *IntegrationTestSuite) AfterTest(suiteName, testName string) {
-	err := suite.store.Close()
-	suite.Require().NoError(err)
+func (testsuite *IntegrationTestSuite) AfterTest(suiteName, testName string) {
+	err := testsuite.store.Close()
+	testsuite.Require().NoError(err)
 }
 
-func (suite *IntegrationTestSuite) makeDB() {
-	err := os.RemoveAll(suite.dbPath)
-	suite.Require().NoError(err)
+func (testsuite *IntegrationTestSuite) makeDB() {
+	err := os.RemoveAll(testsuite.dbPath)
+	testsuite.Require().NoError(err)
 
-	err = os.MkdirAll(suite.dbPath, 0700)
-	suite.Require().NoError(err)
+	err = os.MkdirAll(testsuite.dbPath, 0700)
+	testsuite.Require().NoError(err)
 
-	dbase, err := db.NewSQLite3(suite.ctx, suite.dbPath)
-	suite.Require().NoError(err)
+	dbase, err := db.NewSQLite3(testsuite.ctx, testsuite.dbPath)
+	testsuite.Require().NoError(err)
 
-	suite.store = dbase
+	testsuite.store = dbase
 }
 
-func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
+func (testsuite *IntegrationTestSuite) TestListLatestPCloudContents() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -83,18 +83,18 @@ func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
 
 	lf := pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.pCloudClient.
-		On("ListFolder", suite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), true, true, false, false, []sdk.ClientOption(nil)).
+	testsuite.pCloudClient.
+		On("ListFolder", testsuite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), true, true, false, false, []sdk.ClientOption(nil)).
 		Return(lf, nil).
 		Once()
 
-	err := suite.tracker.ListLatestPCloudContents(suite.ctx, tracker.WithEntriesChSize(0))
-	suite.Require().NoError(err)
+	err := testsuite.tracker.ListLatestPCloudContents(testsuite.ctx, tracker.WithEntriesChSize(0))
+	testsuite.Require().NoError(err)
 
 	expected := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	fsEntries, err := suite.store.GetLatestFileSystemEntries(suite.ctx, db.PCloudFileSystem)
-	suite.Require().NoError(err)
+	fsEntries, err := testsuite.store.GetLatestFileSystemEntries(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
 
 	sortedEntries := func(elements []db.FSEntry) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -102,11 +102,11 @@ func (suite *IntegrationTestSuite) TestListLatestPCloudContents() {
 	sort.Slice(expected, sortedEntries(expected))
 	sort.Slice(fsEntries, sortedEntries(fsEntries))
 	if d := cmp.Diff(expected, fsEntries, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
+func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -117,8 +117,9 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
+	// nolint: dupl
 	expected := []db.FSMutation{
 		{
 			Type:    db.MutationTypeCreated,
@@ -197,8 +198,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 		},
 	}
 
-	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
-	suite.Require().NoError(err)
+	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -206,11 +207,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	if d := cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
+func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -221,11 +222,12 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
-	suite.Require().NoError(err)
+	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
 
+	// nolint: dupl
 	expected := []db.FSMutation{
 		{
 			Type:    db.MutationTypeDeleted,
@@ -304,8 +306,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 		},
 	}
 
-	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
-	suite.Require().NoError(err)
+	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -313,11 +315,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	if d := cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
+func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -328,14 +330,14 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
-	suite.Require().NoError(err)
+	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
+	testsuite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
 		if e.EntryID == 20002 {
 			e.Hash = "1234565432100020002"
 		}
@@ -361,8 +363,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 		},
 	}
 
-	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
-	suite.Require().NoError(err)
+	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -370,11 +372,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	if d := cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
+func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -385,14 +387,14 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
-	suite.Require().NoError(err)
+	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
+	testsuite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
 		if e.EntryID == 20002 {
 			// move File2 to Folder3
 			e.Path = "/Folder3"
@@ -420,8 +422,8 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 		},
 	}
 
-	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
-	suite.Require().NoError(err)
+	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -429,11 +431,11 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	if d := cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
+func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time2 := time.Now().Add(-23 * time.Hour)
 	time3 := time.Now().Add(-22 * time.Hour)
@@ -444,19 +446,19 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 
 	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
-	err := suite.store.MarkNewFileSystemEntriesAsPrevious(suite.ctx, db.PCloudFileSystem)
-	suite.Require().NoError(err)
+	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
 
 	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
 
-	suite.addNewFileSystemEntries(fse1, nil)
+	testsuite.addNewFileSystemEntries(fse1, nil)
 
 	expected := []db.FSMutation{}
 
-	fsMutations, err := suite.tracker.FindPCloudMutations(suite.ctx)
-	suite.Require().NoError(err)
+	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -464,48 +466,48 @@ func (suite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 	sort.Slice(expected, sortedMutations(expected))
 	sort.Slice(fsMutations, sortedMutations(fsMutations))
 	if d := cmp.Diff(expected, fsMutations, cmpopts.IgnoreUnexported()); d != "" {
-		suite.Fail(d)
+		testsuite.Fail(d)
 	}
 }
 
-func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
+func (testsuite *IntegrationTestSuite) TestListLatestLocalContents() {
 	now := time.Now()
 
-	err := os.MkdirAll(filepath.Join(suite.dbPath, "local"), 0700)
-	suite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(suite.dbPath, "local/File000"), []byte("This is File000"), 0600)
-	suite.Require().NoError(err)
+	err := os.MkdirAll(filepath.Join(testsuite.dbPath, "local"), 0700)
+	testsuite.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(testsuite.dbPath, "local", "File000"), []byte("This is File000"), 0600)
+	testsuite.Require().NoError(err)
 
-	err = os.MkdirAll(filepath.Join(suite.dbPath, "local/Folder1"), 0700)
-	suite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(suite.dbPath, "local/Folder1/File1"), []byte("This is File1"), 0600)
-	suite.Require().NoError(err)
+	err = os.MkdirAll(filepath.Join(testsuite.dbPath, "local", "Folder1"), 0700)
+	testsuite.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(testsuite.dbPath, "local", "Folder1", "File1"), []byte("This is File1"), 0600)
+	testsuite.Require().NoError(err)
 
-	err = os.MkdirAll(filepath.Join(suite.dbPath, "local/Folder2"), 0700)
-	suite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(suite.dbPath, "local/Folder2/File2"), []byte("This is File2"), 0600)
-	suite.Require().NoError(err)
+	err = os.MkdirAll(filepath.Join(testsuite.dbPath, "local", "Folder2"), 0700)
+	testsuite.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(testsuite.dbPath, "local", "Folder2", "File2"), []byte("This is File2"), 0600)
+	testsuite.Require().NoError(err)
 
-	err = os.MkdirAll(filepath.Join(suite.dbPath, "local/Folder3"), 0700)
-	suite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(suite.dbPath, "local/Folder3/File3"), []byte("This is File3"), 0600)
-	suite.Require().NoError(err)
+	err = os.MkdirAll(filepath.Join(testsuite.dbPath, "local", "Folder3"), 0700)
+	testsuite.Require().NoError(err)
+	err = ioutil.WriteFile(filepath.Join(testsuite.dbPath, "local", "Folder3", "File3"), []byte("This is File3"), 0600)
+	testsuite.Require().NoError(err)
 
-	err = suite.tracker.ListLatestLocalContents(suite.ctx, filepath.Join(suite.dbPath, "local"), tracker.WithEntriesChSize(0))
-	suite.Require().NoError(err)
+	err = testsuite.tracker.ListLatestLocalContents(testsuite.ctx, filepath.Join(testsuite.dbPath, "local"), tracker.WithEntriesChSize(0))
+	testsuite.Require().NoError(err)
 
 	expected := []db.FSEntry{
 		{
 			IsFolder:  true,
 			IsDeleted: false,
-			Path:      suite.dbPath,
+			Path:      testsuite.dbPath,
 			Name:      "local",
 			Hash:      "",
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local"),
+			Path:      filepath.Join(testsuite.dbPath, "local"),
 			Name:      "File000",
 			Size:      15,
 			Hash:      "01ce643e7c1ca98f6fb21e61b5d03f547813edae",
@@ -513,14 +515,14 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local"),
+			Path:      filepath.Join(testsuite.dbPath, "local"),
 			Name:      "Folder1",
 			Hash:      "",
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local/Folder1"),
+			Path:      filepath.Join(testsuite.dbPath, "local", "Folder1"),
 			Name:      "File1",
 			Size:      13,
 			Hash:      "e8dfb879ddc708ea337a00e9b5580b498193bd2d",
@@ -528,14 +530,14 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local"),
+			Path:      filepath.Join(testsuite.dbPath, "local"),
 			Name:      "Folder2",
 			Hash:      "",
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local/Folder2"),
+			Path:      filepath.Join(testsuite.dbPath, "local", "Folder2"),
 			Name:      "File2",
 			Size:      13,
 			Hash:      "c28739a884e3742ea784f63dd52d9a4a90372235",
@@ -543,23 +545,23 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 		{
 			IsFolder:  true,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local"),
+			Path:      filepath.Join(testsuite.dbPath, "local"),
 			Name:      "Folder3",
 			Hash:      "",
 		},
 		{
 			IsFolder:  false,
 			IsDeleted: false,
-			Path:      filepath.Join(suite.dbPath, "local/Folder3"),
+			Path:      filepath.Join(testsuite.dbPath, "local", "Folder3"),
 			Name:      "File3",
 			Size:      13,
 			Hash:      "995ea3c9a13945c2415a0881cc1bdac7a526b681",
 		},
 	}
 
-	fsEntries, err := suite.store.GetLatestFileSystemEntries(suite.ctx, db.LocalFileSystem)
-	suite.Require().NoError(err)
-	suite.Require().Len(fsEntries, len(expected))
+	fsEntries, err := testsuite.store.GetLatestFileSystemEntries(testsuite.ctx, db.LocalFileSystem)
+	testsuite.Require().NoError(err)
+	testsuite.Require().Len(fsEntries, len(expected))
 
 	sortedEntries := func(elements []db.FSEntry) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
@@ -568,30 +570,32 @@ func (suite *IntegrationTestSuite) TestListLatestLocalContents() {
 	sort.Slice(expected, sortedEntries(expected))
 	sort.Slice(fsEntries, sortedEntries(fsEntries))
 
+	// nolint: gocritic
 	for i, e := range expected {
 		actualE := fsEntries[i]
-		suite.NotEmpty(actualE.DeviceID)
-		suite.Greater(actualE.EntryID, uint64(0))
-		suite.EqualValues(e.IsFolder, actualE.IsFolder)
-		suite.False(actualE.IsDeleted)
-		suite.EqualValues(e.Path, actualE.Path, "for: "+actualE.Name)
-		suite.EqualValues(e.Name, actualE.Name)
-		suite.Greaterf(actualE.ParentFolderID, uint64(0), "expected: %s - actual: %s", e.Name, fsEntries[i].Name)
-		suite.WithinDuration(now, actualE.Created, 5*time.Minute)
-		suite.WithinDuration(now, actualE.Modified, 5*time.Minute)
+		testsuite.NotEmpty(actualE.DeviceID)
+		testsuite.Greater(actualE.EntryID, uint64(0))
+		testsuite.EqualValues(e.IsFolder, actualE.IsFolder)
+		testsuite.False(actualE.IsDeleted)
+		testsuite.EqualValues(e.Path, actualE.Path, "for: "+actualE.Name)
+		testsuite.EqualValues(e.Name, actualE.Name)
+		testsuite.Greaterf(actualE.ParentFolderID, uint64(0), "expected: %s - actual: %s", e.Name, fsEntries[i].Name)
+		testsuite.WithinDuration(now, actualE.Created, 5*time.Minute)
+		testsuite.WithinDuration(now, actualE.Modified, 5*time.Minute)
 		if !e.IsFolder {
-			suite.EqualValues(e.Size, actualE.Size)
+			testsuite.EqualValues(e.Size, actualE.Size)
 		}
-		suite.EqualValues(e.Hash, actualE.Hash)
+		testsuite.EqualValues(e.Hash, actualE.Hash)
 	}
 }
 
-func (suite *IntegrationTestSuite) addNewFileSystemEntries(fse []db.FSEntry, fn func(e db.FSEntry) db.FSEntry) {
+// nolint: gocritic
+func (testsuite *IntegrationTestSuite) addNewFileSystemEntries(fse []db.FSEntry, fn func(e db.FSEntry) db.FSEntry) {
 	if fn == nil {
 		fn = func(e db.FSEntry) db.FSEntry { return e }
 	}
 
-	entriesCh, errCh := suite.store.AddNewFileSystemEntries(suite.ctx, db.PCloudFileSystem, db.WithEntriesChSize(0))
+	entriesCh, errCh := testsuite.store.AddNewFileSystemEntries(testsuite.ctx, db.PCloudFileSystem, db.WithEntriesChSize(0))
 
 	err := func() error {
 		for _, e := range fse {
@@ -606,7 +610,7 @@ func (suite *IntegrationTestSuite) addNewFileSystemEntries(fse []db.FSEntry, fn 
 
 		return <-errCh
 	}()
-	suite.Require().NoError(err)
+	testsuite.Require().NoError(err)
 }
 
 type pCloudClientMock struct {
@@ -630,9 +634,10 @@ func (m *pCloudClientMock) Diff(ctx context.Context, diffID uint64, after time.T
 // │   ├── File2
 // ├── Folder3
 // └── File000
+// nolint: dupl
 func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 time.Time) *sdk.FSList {
 	return &sdk.FSList{
-		Metadata: sdk.Metadata{
+		Metadata: &sdk.Metadata{
 			Path: "/",
 			Name: "/",
 			Created: &sdk.APITime{
@@ -652,7 +657,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 			IsDeleted:      false,
 			DeletedFileID:  0,
 			FolderID:       0,
-			Contents: []sdk.Metadata{
+			Contents: []*sdk.Metadata{
 				{
 					Name: "Folder1",
 					Created: &sdk.APITime{
@@ -671,7 +676,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 					ParentFolderID: 0,
 					IsDeleted:      true,
 					FolderID:       10001,
-					Contents: []sdk.Metadata{
+					Contents: []*sdk.Metadata{
 						{
 							Name: "File1",
 							Created: &sdk.APITime{
@@ -714,7 +719,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 					ParentFolderID: 0,
 					IsDeleted:      false,
 					FolderID:       20001,
-					Contents: []sdk.Metadata{
+					Contents: []*sdk.Metadata{
 						{
 							Name: "File2",
 							Created: &sdk.APITime{
@@ -757,7 +762,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 					ParentFolderID: 0,
 					IsDeleted:      false,
 					FolderID:       30001,
-					Contents:       []sdk.Metadata{},
+					Contents:       []*sdk.Metadata{},
 				},
 				{
 					Name: "File000",

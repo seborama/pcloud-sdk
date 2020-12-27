@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"seborama/pcloud/tracker/db/migrations"
 
+	// sqllite3 sql driver.
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 )
@@ -83,13 +84,12 @@ type migrationStatus string
 
 const (
 	migrationStatusInProgress migrationStatus = "in progress"
-	migrationStatusApplied                    = "applied"
+	migrationStatusApplied    migrationStatus = "applied"
 )
 
 func (m *Migrator) recordMigrationVersion(ctx context.Context, version int, status migrationStatus) error {
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
-		tx.Rollback()
 		return errors.WithStack(err)
 	}
 

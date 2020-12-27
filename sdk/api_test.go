@@ -27,8 +27,8 @@ func TestIntegrationSuite(t *testing.T) {
 	suite.Run(t, new(IntegrationTestSuite))
 }
 
-func (suite *IntegrationTestSuite) SetupSuite() {
-	suite.ctx = context.Background()
+func (testsuite *IntegrationTestSuite) SetupSuite() {
+	testsuite.ctx = context.Background()
 
 	c := &http.Client{
 		Transport: &http.Transport{
@@ -43,60 +43,60 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 		Timeout: 0,
 	}
 
-	suite.initAuthenticatedClient(c)
-	suite.initSuiteTestFolder()
+	testsuite.initAuthenticatedClient(c)
+	testsuite.initSuiteTestFolder()
 }
 
-func (suite *IntegrationTestSuite) TearDownSuite() {
-	suite.deleteSuiteTestFolder()
-	suite.logout()
+func (testsuite *IntegrationTestSuite) TearDownSuite() {
+	testsuite.deleteSuiteTestFolder()
+	testsuite.logout()
 }
 
-func (suite *IntegrationTestSuite) initAuthenticatedClient(c *http.Client) {
+func (testsuite *IntegrationTestSuite) initAuthenticatedClient(c *http.Client) {
 	username := os.Getenv("GO_PCLOUD_USERNAME")
-	suite.Require().NotEmpty(username)
+	testsuite.Require().NotEmpty(username)
 
 	password := os.Getenv("GO_PCLOUD_PASSWORD")
-	suite.Require().NotEmpty(password)
+	testsuite.Require().NotEmpty(password)
 
 	otpCode := os.Getenv("GO_PCLOUD_TFA_CODE")
 
 	pcc := sdk.NewClient(c)
 
 	err := pcc.Login(
-		suite.ctx,
+		testsuite.ctx,
 		otpCode,
 		sdk.WithGlobalOptionUsername(username),
 		sdk.WithGlobalOptionPassword(password),
 		sdk.WithGlobalOptionAuthInactiveExpire(5*time.Minute),
 	)
-	suite.Require().NoError(err)
+	testsuite.Require().NoError(err)
 
-	suite.pcc = pcc
+	testsuite.pcc = pcc
 }
 
-func (suite *IntegrationTestSuite) initSuiteTestFolder() {
-	suite.testFolderPath = "/goPCloudSDK_TestFolder_" + uuid.New().String()
-	lf, err := suite.pcc.CreateFolder(suite.ctx, sdk.T2FolderByPath(suite.testFolderPath))
-	suite.Require().NoError(err)
-	suite.testFolderID = lf.Metadata.FolderID
+func (testsuite *IntegrationTestSuite) initSuiteTestFolder() {
+	testsuite.testFolderPath = "/goPCloudSDK_TestFolder_" + uuid.New().String()
+	lf, err := testsuite.pcc.CreateFolder(testsuite.ctx, sdk.T2FolderByPath(testsuite.testFolderPath))
+	testsuite.Require().NoError(err)
+	testsuite.testFolderID = lf.Metadata.FolderID
 
-	f, err := suite.pcc.FileOpen(suite.ctx, sdk.O_CREAT, sdk.T4FileByFolderIDName(suite.testFolderID, "sample.file"))
-	suite.Require().NoError(err)
-	suite.testFileID = f.FileID
+	f, err := testsuite.pcc.FileOpen(testsuite.ctx, sdk.O_CREAT, sdk.T4FileByFolderIDName(testsuite.testFolderID, "sample.file"))
+	testsuite.Require().NoError(err)
+	testsuite.testFileID = f.FileID
 
-	err = suite.pcc.FileClose(suite.ctx, f.FD)
-	suite.Require().NoError(err)
+	err = testsuite.pcc.FileClose(testsuite.ctx, f.FD)
+	testsuite.Require().NoError(err)
 }
 
-func (suite *IntegrationTestSuite) logout() {
-	lr, err := suite.pcc.Logout(suite.ctx)
-	suite.NoError(err)
+func (testsuite *IntegrationTestSuite) logout() {
+	lr, err := testsuite.pcc.Logout(testsuite.ctx)
+	testsuite.NoError(err)
 
 	fmt.Println("auth token deleted:", lr.AuthDeleted)
 }
 
-func (suite *IntegrationTestSuite) deleteSuiteTestFolder() {
-	_, err := suite.pcc.DeleteFolderRecursive(suite.ctx, sdk.T1FolderByID(suite.testFolderID))
-	suite.NoError(err)
+func (testsuite *IntegrationTestSuite) deleteSuiteTestFolder() {
+	_, err := testsuite.pcc.DeleteFolderRecursive(testsuite.ctx, sdk.T1FolderByID(testsuite.testFolderID))
+	testsuite.NoError(err)
 }
