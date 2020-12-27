@@ -41,9 +41,9 @@ type Version string
 
 const (
 	// VersionPrevious is the previous version of file system entries in the database.
-	VersionPrevious Version = "P"
+	VersionPrevious Version = "Previous"
 	// VersionNew is the newer version of file system entries in the database.
-	VersionNew Version = "N"
+	VersionNew Version = "New"
 )
 
 // FSEntry is a set of details about an entry (folder or file) in the file system.
@@ -51,8 +51,6 @@ type FSEntry struct {
 	DeviceID       string // for cloud, this could be used to distinguish multiple accounts on the same cloud provider
 	EntryID        uint64
 	IsFolder       bool
-	IsDeleted      bool
-	DeletedFileID  uint64
 	Path           string
 	Name           string
 	ParentFolderID uint64
@@ -103,15 +101,13 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, op
 			_, err = tx.ExecContext(
 				ctx,
 				`INSERT INTO "filesystem"
-			(type, version, device_id, entry_id, is_folder, is_deleted, deleted_file_id, path, name, parent_folder_id, created, modified, size, hash)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			(type, version, device_id, entry_id, is_folder, path, name, parent_folder_id, created, modified, size, hash)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				fsType,
 				VersionNew,
 				entry.DeviceID,
 				fmt.Sprintf("%d", entry.EntryID),
 				entry.IsFolder,
-				entry.IsDeleted,
-				fmt.Sprintf("%d", entry.DeletedFileID), // TODO: needed?
 				entry.Path,
 				entry.Name,
 				fmt.Sprintf("%d", entry.ParentFolderID),
@@ -149,8 +145,6 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 			device_id,
 			entry_id,
 			is_folder,
-			is_deleted,
-			deleted_file_id,
 			path,
 			name,
 			parent_folder_id,
@@ -177,8 +171,6 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 			&entry.DeviceID,
 			&entry.EntryID,
 			&entry.IsFolder,
-			&entry.IsDeleted,
-			&entry.DeletedFileID,
 			&entry.Path,
 			&entry.Name,
 			&entry.ParentFolderID,
@@ -242,11 +234,10 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 		ctx,
 		`WITH previous AS (SELECT * FROM filesystem
 						   WHERE version = '`+string(VersionPrevious)+`'
-						     AND is_deleted = false),
+					         AND type = '`+string(PCloudFileSystem)+`'),
 			  new AS (SELECT * FROM filesystem
 					  WHERE version = '`+string(VersionNew)+`'
-					  AND is_deleted = false
-					  AND type = '`+string(PCloudFileSystem)+`')
+					    AND type = '`+string(PCloudFileSystem)+`')
 
 		SELECT
 			'`+string(MutationTypeDeleted)+`',
@@ -254,8 +245,6 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			previous.device_id,
 			previous.entry_id,
 			previous.is_folder,
-			previous.is_deleted,
-			previous.deleted_file_id,
 			previous.path,
 			previous.name,
 			previous.parent_folder_id,
@@ -274,8 +263,6 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.device_id,
 			new.entry_id,
 			new.is_folder,
-			new.is_deleted,
-			new.deleted_file_id,
 			new.path,
 			new.name,
 			new.parent_folder_id,
@@ -294,8 +281,6 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.device_id,
 			new.entry_id,
 			new.is_folder,
-			new.is_deleted,
-			new.deleted_file_id,
 			new.path,
 			new.name,
 			new.parent_folder_id,
@@ -318,8 +303,6 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			new.device_id,
 			new.entry_id,
 			new.is_folder,
-			new.is_deleted,
-			new.deleted_file_id,
 			new.path,
 			new.name,
 			new.parent_folder_id,
@@ -347,8 +330,6 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 			&fsMutation.DeviceID,
 			&fsMutation.EntryID,
 			&fsMutation.IsFolder,
-			&fsMutation.IsDeleted,
-			&fsMutation.DeletedFileID,
 			&fsMutation.Path,
 			&fsMutation.Name,
 			&fsMutation.ParentFolderID,

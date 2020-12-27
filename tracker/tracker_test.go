@@ -127,8 +127,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			FSEntry: db.FSEntry{
 				EntryID:        0,
 				IsFolder:       true,
-				IsDeleted:      false,
-				DeletedFileID:  0,
 				Path:           "/",
 				Name:           "/",
 				ParentFolderID: 0,
@@ -142,7 +140,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			FSEntry: db.FSEntry{
 				EntryID:        20001,
 				IsFolder:       true,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "Folder2",
 				ParentFolderID: 0,
@@ -156,7 +153,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			FSEntry: db.FSEntry{
 				EntryID:        20002,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
@@ -172,7 +168,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			FSEntry: db.FSEntry{
 				EntryID:        30001,
 				IsFolder:       true,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "Folder3",
 				ParentFolderID: 0,
@@ -186,7 +181,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			FSEntry: db.FSEntry{
 				EntryID:        1000003,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "File000",
 				ParentFolderID: 0,
@@ -235,8 +229,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			FSEntry: db.FSEntry{
 				EntryID:        0,
 				IsFolder:       true,
-				IsDeleted:      false,
-				DeletedFileID:  0,
 				Path:           "/",
 				Name:           "/",
 				ParentFolderID: 0,
@@ -250,7 +242,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			FSEntry: db.FSEntry{
 				EntryID:        20001,
 				IsFolder:       true,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "Folder2",
 				ParentFolderID: 0,
@@ -264,7 +255,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			FSEntry: db.FSEntry{
 				EntryID:        20002,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
@@ -280,7 +270,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			FSEntry: db.FSEntry{
 				EntryID:        30001,
 				IsFolder:       true,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "Folder3",
 				ParentFolderID: 0,
@@ -294,7 +283,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			FSEntry: db.FSEntry{
 				EntryID:        1000003,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/",
 				Name:           "File000",
 				ParentFolderID: 0,
@@ -351,7 +339,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 			FSEntry: db.FSEntry{
 				EntryID:        20002,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/Folder2",
 				Name:           "File2",
 				ParentFolderID: 20001,
@@ -410,7 +397,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 			FSEntry: db.FSEntry{
 				EntryID:        20002,
 				IsFolder:       false,
-				IsDeleted:      false,
 				Path:           "/Folder3",
 				Name:           "File2",
 				ParentFolderID: 30001,
@@ -498,64 +484,56 @@ func (testsuite *IntegrationTestSuite) TestListLatestLocalContents() {
 
 	expected := []db.FSEntry{
 		{
-			IsFolder:  true,
-			IsDeleted: false,
-			Path:      testsuite.dbPath,
-			Name:      "local",
-			Hash:      "",
+			IsFolder: true,
+			Path:     testsuite.dbPath,
+			Name:     "local",
+			Hash:     "",
 		},
 		{
-			IsFolder:  false,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local"),
-			Name:      "File000",
-			Size:      15,
-			Hash:      "01ce643e7c1ca98f6fb21e61b5d03f547813edae",
+			IsFolder: false,
+			Path:     filepath.Join(testsuite.dbPath, "local"),
+			Name:     "File000",
+			Size:     15,
+			Hash:     "01ce643e7c1ca98f6fb21e61b5d03f547813edae",
 		},
 		{
-			IsFolder:  true,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local"),
-			Name:      "Folder1",
-			Hash:      "",
+			IsFolder: true,
+			Path:     filepath.Join(testsuite.dbPath, "local"),
+			Name:     "Folder1",
+			Hash:     "",
 		},
 		{
-			IsFolder:  false,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local", "Folder1"),
-			Name:      "File1",
-			Size:      13,
-			Hash:      "e8dfb879ddc708ea337a00e9b5580b498193bd2d",
+			IsFolder: false,
+			Path:     filepath.Join(testsuite.dbPath, "local", "Folder1"),
+			Name:     "File1",
+			Size:     13,
+			Hash:     "e8dfb879ddc708ea337a00e9b5580b498193bd2d",
 		},
 		{
-			IsFolder:  true,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local"),
-			Name:      "Folder2",
-			Hash:      "",
+			IsFolder: true,
+			Path:     filepath.Join(testsuite.dbPath, "local"),
+			Name:     "Folder2",
+			Hash:     "",
 		},
 		{
-			IsFolder:  false,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local", "Folder2"),
-			Name:      "File2",
-			Size:      13,
-			Hash:      "c28739a884e3742ea784f63dd52d9a4a90372235",
+			IsFolder: false,
+			Path:     filepath.Join(testsuite.dbPath, "local", "Folder2"),
+			Name:     "File2",
+			Size:     13,
+			Hash:     "c28739a884e3742ea784f63dd52d9a4a90372235",
 		},
 		{
-			IsFolder:  true,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local"),
-			Name:      "Folder3",
-			Hash:      "",
+			IsFolder: true,
+			Path:     filepath.Join(testsuite.dbPath, "local"),
+			Name:     "Folder3",
+			Hash:     "",
 		},
 		{
-			IsFolder:  false,
-			IsDeleted: false,
-			Path:      filepath.Join(testsuite.dbPath, "local", "Folder3"),
-			Name:      "File3",
-			Size:      13,
-			Hash:      "995ea3c9a13945c2415a0881cc1bdac7a526b681",
+			IsFolder: false,
+			Path:     filepath.Join(testsuite.dbPath, "local", "Folder3"),
+			Name:     "File3",
+			Size:     13,
+			Hash:     "995ea3c9a13945c2415a0881cc1bdac7a526b681",
 		},
 	}
 
@@ -576,7 +554,6 @@ func (testsuite *IntegrationTestSuite) TestListLatestLocalContents() {
 		testsuite.NotEmpty(actualE.DeviceID)
 		testsuite.Greater(actualE.EntryID, uint64(0))
 		testsuite.EqualValues(e.IsFolder, actualE.IsFolder)
-		testsuite.False(actualE.IsDeleted)
 		testsuite.EqualValues(e.Path, actualE.Path, "for: "+actualE.Name)
 		testsuite.EqualValues(e.Name, actualE.Name)
 		testsuite.Greaterf(actualE.ParentFolderID, uint64(0), "expected: %s - actual: %s", e.Name, fsEntries[i].Name)
@@ -797,8 +774,6 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 		{
 			EntryID:        0,
 			IsFolder:       true,
-			IsDeleted:      false,
-			DeletedFileID:  0,
 			Path:           "/",
 			Name:           "/",
 			ParentFolderID: 0,
@@ -806,31 +781,8 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			Modified:       time1,
 		},
 		{
-			EntryID:        10001,
-			IsFolder:       true,
-			IsDeleted:      true,
-			Path:           "/",
-			Name:           "Folder1",
-			ParentFolderID: 0,
-			Created:        time2,
-			Modified:       time2,
-		},
-		{
-			EntryID:        10002,
-			IsFolder:       false,
-			IsDeleted:      true,
-			Path:           "/Folder1",
-			Name:           "File1",
-			ParentFolderID: 10001,
-			Created:        time3,
-			Modified:       time3,
-			Size:           123,
-			Hash:           "9876543210123456789",
-		},
-		{
 			EntryID:        20001,
 			IsFolder:       true,
-			IsDeleted:      false,
 			Path:           "/",
 			Name:           "Folder2",
 			ParentFolderID: 0,
@@ -840,7 +792,6 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 		{
 			EntryID:        20002,
 			IsFolder:       false,
-			IsDeleted:      false,
 			Path:           "/Folder2",
 			Name:           "File2",
 			ParentFolderID: 20001,
@@ -852,7 +803,6 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 		{
 			EntryID:        30001,
 			IsFolder:       true,
-			IsDeleted:      false,
 			Path:           "/",
 			Name:           "Folder3",
 			ParentFolderID: 0,
@@ -862,7 +812,6 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 		{
 			EntryID:        1000003,
 			IsFolder:       false,
-			IsDeleted:      false,
 			Path:           "/",
 			Name:           "File000",
 			ParentFolderID: 0,

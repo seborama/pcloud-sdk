@@ -83,6 +83,10 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 		return errors.New("cannot list pCloud drive contents: no data")
 	}
 
+	if lf.Metadata.IsDeleted {
+		return errors.New("cannot list pCloud drive contents: root folder is reportedly deleted")
+	}
+
 	err = func() error {
 		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem, db.WithEntriesChSize(cfg.entriesChSize))
 		var entries stack
@@ -95,6 +99,10 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 			entryID := entry.FileID
 			if entry.IsFolder {
 				for _, e := range entry.Contents {
+					if e.IsDeleted {
+						continue
+					}
+
 					e.Path = filepath.Join(entry.Path, entry.Name)
 					entries.add(e)
 				}
@@ -107,8 +115,6 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 			fsEntry := db.FSEntry{
 				EntryID:        entryID,
 				IsFolder:       entry.IsFolder,
-				IsDeleted:      entry.IsDeleted,
-				DeletedFileID:  entry.DeletedFileID,
 				Path:           entry.Path,
 				Name:           entry.Name,
 				ParentFolderID: entry.ParentFolderID,

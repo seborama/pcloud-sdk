@@ -1,17 +1,28 @@
 package migrations
 
+// SQLite3 holds the migrations for the sqlite3-based schema.
+// TODO: missing a concept of replica_id which would uniquely identify a cloud or a local
+//       replica beyond the current type + device_id which is not sufficient. For instance,
+//       there could be 2 local replicas with the same device ID (they would differ by root
+//       path)
 var SQLite3 = []string{
 	`
 		BEGIN;
 
+		CREATE TABLE IF NOT EXISTS "sync" (
+			"type"       VARCHAR,
+			"device_id"  VARCHAR,
+			"status"     VARCHAR,
+
+			PRIMARY KEY ("type", "device_id")
+		);
+
 		CREATE TABLE IF NOT EXISTS "filesystem" (
 			"type"              VARCHAR,
-			"version"           CHAR(1),
+			"version"           VARCHAR,
 			"device_id"         VARCHAR,
 			"entry_id"          VARCHAR,
 			"is_folder"         BOOL DEFAULT FALSE,
-			"is_deleted"        BOOL DEFAULT FALSE,
-			"deleted_file_id"   VARCHAR NULL,
 			"path"              VARCHAR NOT NULL,
 			"name"              VARCHAR NOT NULL,
 			"parent_folder_id"  VARCHAR NOT NULL,
