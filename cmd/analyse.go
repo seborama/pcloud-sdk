@@ -56,13 +56,19 @@ func analyse(c *cli.Context) error {
 		return err
 	}
 
+	fmt.Println(`
+	TODO: shifting state from New to Previous (and hence drop the 'old' Previous) should ONLY
+	ONLY happen when the analysis has completed and sync completed successfully.
+	The "Previous" state MUST NOT be dropped until it has been fully sync'ed with a newer state.
+	Failing to follow this rule would lead an incomplete sync and loss of data"`)
+
 	fmt.Println("FindPCloudMutations...")
 	fsm, err := track.FindPCloudMutations(ctx)
 	j, err := json.MarshalIndent(fsm, "", "  ")
 	if err != nil {
 		return err
 	}
-	fmt.Println("PCloud mutations:", string(j))
+	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:512]))
 
 	return nil
 }

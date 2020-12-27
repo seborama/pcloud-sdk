@@ -114,6 +114,7 @@ func WithEntriesChSize(n int) Options {
 	}
 }
 
+// AddNewFileSystemEntries adds a new file system entry
 func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, fsType FSType, opts ...Options) (chan<- FSEntry, <-chan error) {
 	cfg := config{
 		entriesChSize: 100,
@@ -237,22 +238,26 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 	return fsEntries, nil
 }
 
+// GetPreviousFileSystemEntries get the previous (i.e. version "Previous") file system entries
+// for the specified file system type.
 func (s *SQLite3) GetPreviousFileSystemEntries(ctx context.Context, fsType FSType) ([]FSEntry, error) {
 	return s.getFileSystemEntries(ctx, fsType, VersionPrevious)
 }
 
+// GetLatestFileSystemEntries get the latest (i.e. version "New") file system entries for the
+// specified file system type.
 func (s *SQLite3) GetLatestFileSystemEntries(ctx context.Context, fsType FSType) ([]FSEntry, error) {
 	return s.getFileSystemEntries(ctx, fsType, VersionNew)
 }
 
-// FSMutation contains a filesystem mutation: type and details.
+// FSMutation contains a file system mutation: type and details.
 type FSMutation struct {
 	Type MutationType
 	Version
 	FSEntry
 }
 
-// MutationType describes the type of mutation of a filesystem.
+// MutationType describes the type of mutation of a file system.
 type MutationType string
 
 const (
@@ -396,6 +401,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 	return fsMutations, nil
 }
 
+// FSType describes a file system type.
 type FSType string
 
 const (
@@ -403,6 +409,11 @@ const (
 	PCloudFileSystem        = "pCloud"
 )
 
+// MarkNewFileSystemEntriesAsPrevious clears the "previous" file system entries for the specified
+// file system and marks the "new" file system entries as "previous".
+// TODO: this needs to be strenghtened with a "rollback" such that if the analysis of the current
+// state between "previous" and "new" did not copmlete, then either do not shift versions OR
+// update "new" and do NOT touch previous.
 func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType FSType) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
