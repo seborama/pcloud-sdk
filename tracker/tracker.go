@@ -3,6 +3,7 @@ package tracker
 import (
 	"bufio"
 	"context"
+	"seborama/pcloud/tracker/archos"
 
 	// nolint:gosec
 	"crypto/sha1"
@@ -12,7 +13,6 @@ import (
 	"path/filepath"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker/db"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -158,7 +158,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 		return errors.Errorf("path is not pointing at a directory: %s", path)
 	}
 
-	deviceID := fi.Sys().(*syscall.Stat_t).Dev // Unix only
+	deviceID := archos.Device(fi)
 
 	folderIDs := map[string]uint64{}
 
@@ -172,7 +172,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 					return errors.WithStack(err)
 				}
 
-				if info.Sys().(*syscall.Stat_t).Dev != deviceID {
+				if archos.Device(info) != deviceID {
 					return filepath.SkipDir
 				}
 
@@ -180,7 +180,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 				dir := filepath.Dir(path) // NOTE: this also calls filepath.Clean
 				if info.IsDir() {
 					dir = filepath.Clean(path)
-					folderIDs[dir] = info.Sys().(*syscall.Stat_t).Ino // Unix only
+					folderIDs[dir] = archos.Inode(info)
 				} else {
 					hash, err = hashFileData(path)
 					if err != nil {
@@ -188,20 +188,18 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 					}
 				}
 
-				// TODO: OSX-specific!!
-				createdTime := time.Unix(info.Sys().(*syscall.Stat_t).Ctimespec.Sec, info.Sys().(*syscall.Stat_t).Ctimespec.Nsec)
+				createdTime := archos.CreatedTime(info)
 
 				parentFolderID, ok := folderIDs[dir]
 				if !ok {
 					return errors.Errorf("unable to determine parent folder ID for '%s' using key='%s'", path, dir)
 				}
 
-				// TODO: this is currently unix-specific, make more generic to at least include Windows
 				//       see: go/src/os/types_windows.go
 				//       see: https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
 				fsEntry := db.FSEntry{
 					DeviceID:       fmt.Sprintf("%d", deviceID),
-					EntryID:        info.Sys().(*syscall.Stat_t).Ino, // Unix only
+					EntryID:        archos.Inode(info),
 					IsFolder:       info.IsDir(),
 					Path:           filepath.Dir(path),
 					Name:           info.Name(),
@@ -209,7 +207,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 					Created:        createdTime,
 					Modified:       info.ModTime(),
 					Size:           uint64(info.Size()),
-					Hash:           hash, // TODO: needs calculating but only if new / modified file
+					Hash:           hash,
 				}
 
 				select {
