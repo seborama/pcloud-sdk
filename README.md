@@ -8,6 +8,10 @@ NOTE: I'm **not** affiliated to pCloud so this project is as good or as bad as i
 
 See [SDK](sdk/README.md).
 
+## Tracker (sync)
+
+See [Tracker](tracker/README.md).
+
 ## History
 
 The original driver for this project is to create a pCloud client for my Raspberry Pi4.
@@ -18,23 +22,8 @@ While [pCloud's console client](https://github.com/pcloudcom/console-client) see
 
 The first objective is to implement a Go version of the SDK.
 
-## API documentation
+## pCloud API documentation
 
 The official pCloud API is documented at:
 
 https://docs.pcloud.com
-
-## Getting started
-
-The tests rely on the presence of two environment variables to supply your credentials:
-- `GO_PCLOUD_USERNAME`
-- `GO_PCLOUD_PASSWORD`
-- `GO_PCLOUD_TFA_CODE` - BETA. Note that the device is automatically marked as trusted so TFA is not required the next time. You can remove the trust manually in your [account security settings](https://my.pcloud.com/#page=settings&settings=tab-security).
-
-TFA was possible thanks to [Glib Dzevo](https://github.com/gdzevo) and his [console-client PR](https://github.com/pcloudcom/console-client/pull/94) where I found the info I needed!
-
-## Limitations
-
-- Not all SDK functions have been implemented but may be in the future.
-- The crypto folder is not in scope for now and unlikely to be. **Happy to receive a PR** 😀
-

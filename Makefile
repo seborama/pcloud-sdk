@@ -15,7 +15,8 @@ endif
 
 .phony: build
 build:
-	@go build -v -o /tmp/pcloud ./cmd
+	@go build -v -o /tmp/pcloud ./cmd && \
+	 echo "Binary created at /tmp/pcloud"
 
 .phony: test
 test: test-sdk test-tracker
