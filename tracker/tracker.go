@@ -28,6 +28,7 @@ type storer interface {
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
+	MarkSyncRequired(ctx context.Context, fsType db.FSType) error
 }
 
 // Tracker contains the elements necessary to track file system mutations.
@@ -136,7 +137,16 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 		return errors.WithStack(<-errCh)
 	}()
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	err = t.store.MarkSyncRequired(ctx, db.PCloudFileSystem)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ListLatestLocalContents moves all entries marked as VersionNew to VersionPrevious

@@ -362,12 +362,26 @@ const (
 	PCloudFileSystem FSType = "pCloud"
 )
 
+type SyncStatus string
+
+const (
+	SyncStatusComplete   SyncStatus = "Complete"
+	SyncStatusRequired   SyncStatus = "Required"
+	SyncStatusInProgress SyncStatus = "In progress"
+)
+
 // MarkNewFileSystemEntriesAsPrevious clears the "previous" file system entries for the specified
 // file system and marks the "new" file system entries as "previous".
-// TODO: this needs to be strengthened with a "rollback" such that if the analysis of the current
-// state between "previous" and "new" did not copmlete, then either do not shift versions OR
-// update "new" and do NOT touch previous.
 func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType FSType) error {
+	syncLocked, err := s.isSyncLocked(ctx, fsType)
+	if err != nil {
+		return err
+	}
+
+	if syncLocked {
+		return errors.Errorf("sync is locked for file system type '%s'", string(fsType))
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -405,6 +419,83 @@ func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 	}
 
 	return nil
+}
+
+// MarkSyncRequired marks the status of the sync as "required".
+func (s *SQLite3) MarkSyncRequired(ctx context.Context, fsType FSType) error {
+	syncLocked, err := s.isSyncLocked(ctx, fsType)
+	if err != nil {
+		return err
+	}
+
+	if syncLocked {
+		return errors.Errorf("sync is locked for file system type '%s'", string(fsType))
+	}
+
+	_, err = s.db.ExecContext(
+		ctx,
+		`INSERT INTO "sync" ("type", "status")
+		 VALUES (?, ?)
+		 ON CONFLICT REPLACE`,
+		fsType,
+		SyncStatusRequired,
+	)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (s *SQLite3) isSyncLocked(ctx context.Context, fsType FSType) (bool, error) {
+	ul, err := s.isSyncUnlocked(ctx, fsType)
+	return !ul, err
+}
+
+func (s *SQLite3) isSyncUnlocked(ctx context.Context, fsType FSType) (bool, error) {
+	status := ""
+
+	err := s.db.QueryRowContext(
+		ctx,
+		`SELECT status FROM "sync"
+		WHERE "type" = ?`,
+		fsType,
+	).Scan(&status)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return false, errors.WithStack(err)
+	}
+
+	previousRowsCount := 0
+
+	err = s.db.QueryRowContext(
+		ctx,
+		`SELECT count(*) FROM "filesystem"
+		 WHERE "type" = ?
+		   AND "version" = ?`,
+		fsType,
+		VersionPrevious,
+	).Scan(&previousRowsCount)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	newRowsCount := 0
+
+	err = s.db.QueryRowContext(
+		ctx,
+		`SELECT count(*) FROM "filesystem"
+		 WHERE "type" = ?
+		   AND "version" = ?`,
+		fsType,
+		VersionNew,
+	).Scan(&newRowsCount)
+	if err != nil {
+		return false, errors.WithStack(err)
+	}
+
+	return status == string(SyncStatusComplete) ||
+			(status == "" && previousRowsCount == 0 && newRowsCount == 0),
+		nil
 }
 
 func doRollback(tx *sql.Tx, err error) error {

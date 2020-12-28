@@ -11,10 +11,9 @@ var SQLite3 = []string{
 
 		CREATE TABLE IF NOT EXISTS "sync" (
 			"type"       VARCHAR,
-			"device_id"  VARCHAR,
 			"status"     VARCHAR,
 
-			PRIMARY KEY ("type", "device_id")
+			PRIMARY KEY ("type")
 		);
 
 		CREATE TABLE IF NOT EXISTS "filesystem" (
