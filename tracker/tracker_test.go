@@ -88,7 +88,7 @@ func (testsuite *IntegrationTestSuite) TestListLatestPCloudContents() {
 		Return(lf, nil).
 		Once()
 
-	err := testsuite.tracker.ListLatestPCloudContents(testsuite.ctx, tracker.WithEntriesChSize(0))
+	err := testsuite.tracker.ListLatestPCloudContents(testsuite.ctx, tracker.WithEntriesChannelSize(0))
 	testsuite.Require().NoError(err)
 
 	expected := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
@@ -479,7 +479,7 @@ func (testsuite *IntegrationTestSuite) TestListLatestLocalContents() {
 	err = ioutil.WriteFile(filepath.Join(testsuite.dbPath, "local", "Folder3", "File3"), []byte("This is File3"), 0600)
 	testsuite.Require().NoError(err)
 
-	err = testsuite.tracker.ListLatestLocalContents(testsuite.ctx, filepath.Join(testsuite.dbPath, "local"), tracker.WithEntriesChSize(0))
+	err = testsuite.tracker.ListLatestLocalContents(testsuite.ctx, filepath.Join(testsuite.dbPath, "local"), tracker.WithEntriesChannelSize(0))
 	testsuite.Require().NoError(err)
 
 	expected := []db.FSEntry{
@@ -572,7 +572,7 @@ func (testsuite *IntegrationTestSuite) addNewFileSystemEntries(fse []db.FSEntry,
 		fn = func(e db.FSEntry) db.FSEntry { return e }
 	}
 
-	entriesCh, errCh := testsuite.store.AddNewFileSystemEntries(testsuite.ctx, db.PCloudFileSystem, db.WithEntriesChSize(0))
+	entriesCh, errCh := testsuite.store.AddNewFileSystemEntries(testsuite.ctx, db.PCloudFileSystem, db.WithEntriesChannelSize(0))
 
 	err := func() error {
 		for _, e := range fse {

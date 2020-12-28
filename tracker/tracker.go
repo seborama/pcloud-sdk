@@ -29,6 +29,10 @@ type storer interface {
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
 	MarkSyncRequired(ctx context.Context, fsType db.FSType) error
+	MarkSyncInProgress(ctx context.Context, fsType db.FSType) error
+	MarkSyncComplete(ctx context.Context, fsType db.FSType) error
+	IsFileSystemEmpty(ctx context.Context, fsType db.FSType) (bool, error)
+	GetSyncStatus(ctx context.Context, fsType db.FSType) (db.SyncStatus, error)
 }
 
 // Tracker contains the elements necessary to track file system mutations.
@@ -39,24 +43,17 @@ type Tracker struct {
 
 // NewTracker creates a new initiliased Tracker.
 func NewTracker(ctx context.Context, pCloudClient sdkClient, store storer) (*Tracker, error) {
-	return &Tracker{
+	t := &Tracker{
 		pCloudClient: pCloudClient,
 		store:        store,
-	}, nil
-}
-
-func (t *Tracker) Track(ctx context.Context) error {
-	err := t.ListLatestPCloudContents(ctx)
-	if err != nil {
-		return err
 	}
 
-	_, err = t.FindPCloudMutations(ctx)
+	err := t.initSyncStatus(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return t, nil
 }
 
 // ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
@@ -70,7 +67,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 		opt(&cfg)
 	}
 
-	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
+	err := t.markNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
 	if err != nil {
 		return err
 	}
@@ -89,7 +86,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 	}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem, db.WithEntriesChSize(cfg.entriesChSize))
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem, db.WithEntriesChannelSize(cfg.entriesChSize))
 		var entries stack
 		entries.add(lf.Metadata)
 
@@ -136,12 +133,11 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 
 		return errors.WithStack(<-errCh)
 	}()
-
 	if err != nil {
 		return err
 	}
 
-	err = t.store.MarkSyncRequired(ctx, db.PCloudFileSystem)
+	err = t.markSyncAsRequired(ctx, db.PCloudFileSystem)
 	if err != nil {
 		return err
 	}
@@ -160,7 +156,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 		opt(&cfg)
 	}
 
-	err := t.store.MarkNewFileSystemEntriesAsPrevious(ctx, db.LocalFileSystem)
+	err := t.markNewFileSystemEntriesAsPrevious(ctx, db.LocalFileSystem)
 	if err != nil {
 		return err
 	}
@@ -179,7 +175,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 	folderIDs := map[string]uint64{}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem, db.WithEntriesChSize(cfg.entriesChSize))
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem, db.WithEntriesChannelSize(cfg.entriesChSize))
 		isFSEntriesChOpened := true
 
 		err = filepath.Walk(path,
@@ -242,8 +238,57 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 		}
 		return err
 	}()
+	if err != nil {
+		return err
+	}
 
-	return err
+	err = t.markSyncAsRequired(ctx, db.LocalFileSystem)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *Tracker) initSyncStatus(ctx context.Context) error {
+	for _, fsType := range []db.FSType{db.PCloudFileSystem, db.LocalFileSystem} {
+		fsEmpty, err := t.store.IsFileSystemEmpty(ctx, fsType)
+		if err != nil {
+			return err
+		}
+
+		if fsEmpty {
+			t.store.MarkSyncComplete(ctx, fsType)
+		}
+	}
+
+	return nil
+}
+
+func (t *Tracker) markNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error {
+	status, err := t.store.GetSyncStatus(ctx, fsType)
+	if err != nil {
+		return errors.WithMessage(err, "database error or sync has not been initialised")
+	}
+
+	if status != db.SyncStatusComplete {
+		return errors.Errorf("markNewFileSystemEntriesAsPrevious requires sync status '%s' but status is currently '%s'", db.SyncStatusComplete, status)
+	}
+
+	return t.store.MarkNewFileSystemEntriesAsPrevious(ctx, fsType)
+}
+
+func (t *Tracker) markSyncAsRequired(ctx context.Context, fsType db.FSType) error {
+	status, err := t.store.GetSyncStatus(ctx, fsType)
+	if err != nil {
+		return err
+	}
+
+	if status != db.SyncStatusComplete {
+		return errors.Errorf("cannot transition sync status from '%s' to '%s'", status, db.SyncStatusRequired)
+	}
+
+	return t.store.MarkSyncRequired(ctx, fsType)
 }
 
 type config struct {
@@ -252,7 +297,9 @@ type config struct {
 
 type Options func(*config)
 
-func WithEntriesChSize(n int) Options {
+// WithEntriesChannelSize is a functional parameter that allows to choose the size of the entries
+// channel used by AddNewFileSystemEntries.
+func WithEntriesChannelSize(n int) Options {
 	return func(obj *config) {
 		obj.entriesChSize = n
 	}

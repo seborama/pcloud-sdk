@@ -66,7 +66,7 @@ type config struct {
 
 type Options func(*config)
 
-func WithEntriesChSize(n int) Options {
+func WithEntriesChannelSize(n int) Options {
 	return func(obj *config) {
 		obj.entriesChSize = n
 	}
@@ -373,15 +373,6 @@ const (
 // MarkNewFileSystemEntriesAsPrevious clears the "previous" file system entries for the specified
 // file system and marks the "new" file system entries as "previous".
 func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType FSType) error {
-	syncLocked, err := s.isSyncLocked(ctx, fsType)
-	if err != nil {
-		return err
-	}
-
-	if syncLocked {
-		return errors.Errorf("sync is locked for file system type '%s'", string(fsType))
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
@@ -423,51 +414,67 @@ func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 
 // MarkSyncRequired marks the status of the sync as "required".
 func (s *SQLite3) MarkSyncRequired(ctx context.Context, fsType FSType) error {
-	syncLocked, err := s.isSyncLocked(ctx, fsType)
-	if err != nil {
-		return err
-	}
-
-	if syncLocked {
-		return errors.Errorf("sync is locked for file system type '%s'", string(fsType))
-	}
-
-	_, err = s.db.ExecContext(
+	_, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO "sync" ("type", "status")
 		 VALUES (?, ?)
-		 ON CONFLICT REPLACE`,
+		 ON CONFLICT ("type")
+		 DO UPDATE SET "status" = excluded.status`,
 		fsType,
 		SyncStatusRequired,
 	)
-	if err != nil {
-		return errors.WithStack(err)
-	}
 
-	return nil
+	return errors.WithStack(err)
 }
 
-func (s *SQLite3) isSyncLocked(ctx context.Context, fsType FSType) (bool, error) {
-	ul, err := s.isSyncUnlocked(ctx, fsType)
-	return !ul, err
+// MarkSyncInProgress marks the status of the sync as "in progress".
+func (s *SQLite3) MarkSyncInProgress(ctx context.Context, fsType FSType) error {
+	_, err := s.db.ExecContext(
+		ctx,
+		`INSERT INTO "sync" ("type", "status")
+		 VALUES (?, ?)
+		 ON CONFLICT ("type")
+		 DO UPDATE SET "status" = excluded.status`,
+		fsType,
+		SyncStatusInProgress,
+	)
+
+	return errors.WithStack(err)
 }
 
-func (s *SQLite3) isSyncUnlocked(ctx context.Context, fsType FSType) (bool, error) {
+// MarkSyncComplete marks the status of the sync as "complete".
+func (s *SQLite3) MarkSyncComplete(ctx context.Context, fsType FSType) error {
+	_, err := s.db.ExecContext(
+		ctx,
+		`INSERT INTO "sync" ("type", "status")
+		 VALUES (?, ?)
+		 ON CONFLICT ("type")
+		 DO UPDATE SET "status" = excluded.status`,
+		fsType,
+		SyncStatusComplete,
+	)
+
+	return errors.WithStack(err)
+}
+
+// GetSyncStatus returns the current status of the sync for the specified fsType.
+// It will return an error (no rows found) if it cannot find the status row.
+func (s *SQLite3) GetSyncStatus(ctx context.Context, fsType FSType) (SyncStatus, error) {
 	status := ""
 
 	err := s.db.QueryRowContext(
 		ctx,
-		`SELECT status FROM "sync"
-		WHERE "type" = ?`,
+		`SELECT status FROM "sync" WHERE "type" = ?`,
 		fsType,
 	).Scan(&status)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return false, errors.WithStack(err)
-	}
 
+	return SyncStatus(status), errors.WithStack(err)
+}
+
+func (s *SQLite3) IsFileSystemEmpty(ctx context.Context, fsType FSType) (bool, error) {
 	previousRowsCount := 0
 
-	err = s.db.QueryRowContext(
+	err := s.db.QueryRowContext(
 		ctx,
 		`SELECT count(*) FROM "filesystem"
 		 WHERE "type" = ?
@@ -493,9 +500,7 @@ func (s *SQLite3) isSyncUnlocked(ctx context.Context, fsType FSType) (bool, erro
 		return false, errors.WithStack(err)
 	}
 
-	return status == string(SyncStatusComplete) ||
-			(status == "" && previousRowsCount == 0 && newRowsCount == 0),
-		nil
+	return previousRowsCount == 0 && newRowsCount == 0, nil
 }
 
 func doRollback(tx *sql.Tx, err error) error {
