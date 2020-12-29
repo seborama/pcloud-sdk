@@ -24,9 +24,10 @@ type sdkClient interface {
 }
 
 type storer interface {
-	AddNewFileSystemEntries(ctx context.Context, fsType db.FSType, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
+	AddNewFileSystemEntries(ctx context.Context, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
+	GetCrossMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
 	MarkSyncRequired(ctx context.Context, fsType db.FSType) error
 	MarkSyncInProgress(ctx context.Context, fsType db.FSType) error
@@ -86,7 +87,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 	}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.PCloudFileSystem, db.WithEntriesChannelSize(cfg.entriesChSize))
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.WithEntriesChannelSize(cfg.entriesChSize))
 		var entries stack
 		entries.add(lf.Metadata)
 
@@ -111,6 +112,7 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 			}
 
 			fsEntry := db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        entryID,
 				IsFolder:       entry.IsFolder,
 				Path:           entry.Path,
@@ -175,7 +177,7 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 	folderIDs := map[string]uint64{}
 
 	err = func() error {
-		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.LocalFileSystem, db.WithEntriesChannelSize(cfg.entriesChSize))
+		fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.WithEntriesChannelSize(cfg.entriesChSize))
 		isFSEntriesChOpened := true
 
 		err = filepath.Walk(path,
@@ -207,9 +209,11 @@ func (t *Tracker) ListLatestLocalContents(ctx context.Context, path string, opts
 					return errors.Errorf("unable to determine parent folder ID for '%s' using key='%s'", path, dir)
 				}
 
-				//       see: go/src/os/types_windows.go
-				//       see: https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
+				// tips for Windows support:
+				// - go/src/os/types_windows.go
+				// - https://stackoverflow.com/questions/7162164/does-windows-have-inode-numbers-like-linux
 				fsEntry := db.FSEntry{
+					FSType:         db.LocalFileSystem,
 					DeviceID:       fmt.Sprintf("%d", deviceID),
 					EntryID:        archos.Inode(info),
 					IsFolder:       info.IsDir(),
@@ -335,6 +339,16 @@ func hashFileData(path string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", cs.Sum(nil)), nil
+}
+
+// FindCrossMutations determines all mutations that have taken place in PCloud between
+// VersionPrevious and VersionNew.
+func (t *Tracker) FindCrossMutations(ctx context.Context) ([]db.FSMutation, error) {
+	fsMutations, err := t.store.GetCrossMutations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return fsMutations, nil
 }
 
 // FindPCloudMutations determines all mutations that have taken place in PCloud between

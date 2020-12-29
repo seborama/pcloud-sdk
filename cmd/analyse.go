@@ -68,5 +68,17 @@ func analyse(c *cli.Context) error {
 	}
 	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:512]))
 
+	fmt.Println("FindCrossMutations...")
+	fsm, err = track.FindCrossMutations(ctx)
+	if err != nil {
+		return err
+	}
+
+	j, err = json.MarshalIndent(fsm, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Cross mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:1024]))
+
 	return nil
 }

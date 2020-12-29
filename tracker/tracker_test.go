@@ -125,6 +125,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        0,
 				IsFolder:       true,
 				Path:           "/",
@@ -138,6 +139,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20001,
 				IsFolder:       true,
 				Path:           "/",
@@ -151,6 +153,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20002,
 				IsFolder:       false,
 				Path:           "/Folder2",
@@ -166,6 +169,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        30001,
 				IsFolder:       true,
 				Path:           "/",
@@ -179,6 +183,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        1000003,
 				IsFolder:       false,
 				Path:           "/",
@@ -227,6 +232,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        0,
 				IsFolder:       true,
 				Path:           "/",
@@ -240,6 +246,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20001,
 				IsFolder:       true,
 				Path:           "/",
@@ -253,6 +260,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20002,
 				IsFolder:       false,
 				Path:           "/Folder2",
@@ -268,6 +276,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        30001,
 				IsFolder:       true,
 				Path:           "/",
@@ -281,6 +290,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        1000003,
 				IsFolder:       false,
 				Path:           "/",
@@ -337,6 +347,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 			Type:    db.MutationTypeModified,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20002,
 				IsFolder:       false,
 				Path:           "/Folder2",
@@ -395,6 +406,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 			Type:    db.MutationTypeMoved,
 			Version: db.VersionNew,
 			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
 				EntryID:        20002,
 				IsFolder:       false,
 				Path:           "/Folder3",
@@ -572,7 +584,7 @@ func (testsuite *IntegrationTestSuite) addNewFileSystemEntries(fse []db.FSEntry,
 		fn = func(e db.FSEntry) db.FSEntry { return e }
 	}
 
-	entriesCh, errCh := testsuite.store.AddNewFileSystemEntries(testsuite.ctx, db.PCloudFileSystem, db.WithEntriesChannelSize(0))
+	entriesCh, errCh := testsuite.store.AddNewFileSystemEntries(testsuite.ctx, db.WithEntriesChannelSize(0))
 
 	err := func() error {
 		for _, e := range fse {
@@ -772,6 +784,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) []db.FSEntry {
 	return []db.FSEntry{
 		{
+			FSType:         db.PCloudFileSystem,
 			EntryID:        0,
 			IsFolder:       true,
 			Path:           "/",
@@ -781,6 +794,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			Modified:       time1,
 		},
 		{
+			FSType:         db.PCloudFileSystem,
 			EntryID:        20001,
 			IsFolder:       true,
 			Path:           "/",
@@ -790,6 +804,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			Modified:       time4,
 		},
 		{
+			FSType:         db.PCloudFileSystem,
 			EntryID:        20002,
 			IsFolder:       false,
 			Path:           "/Folder2",
@@ -801,6 +816,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			Hash:           "9876543210100020002",
 		},
 		{
+			FSType:         db.PCloudFileSystem,
 			EntryID:        30001,
 			IsFolder:       true,
 			Path:           "/",
@@ -810,6 +826,7 @@ func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) [
 			Modified:       time6,
 		},
 		{
+			FSType:         db.PCloudFileSystem,
 			EntryID:        1000003,
 			IsFolder:       false,
 			Path:           "/",
