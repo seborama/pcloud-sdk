@@ -44,6 +44,24 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:    "cli",
+				Aliases: []string{"a"},
+				Usage:   "pCloud CLI",
+				Action:  pCLI,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "from",
+						Usage:    "Location of source (use prefix 'r:' for pCloud remote)",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "to",
+						Usage:    "Location of destination (use prefix 'r:' for pCloud remote)",
+						Required: true,
+					},
+				},
+			},
 		},
 	}
 
