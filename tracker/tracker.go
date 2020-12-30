@@ -3,7 +3,6 @@ package tracker
 import (
 	"bufio"
 	"context"
-	"seborama/pcloud/tracker/archos"
 
 	// nolint:gosec
 	"crypto/sha1"
@@ -11,9 +10,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker/db"
 	"time"
+
+	"seborama/pcloud/sdk"
+	"seborama/pcloud/tracker/archos"
+	"seborama/pcloud/tracker/db"
 
 	"github.com/pkg/errors"
 )
@@ -27,7 +28,8 @@ type storer interface {
 	AddNewFileSystemEntries(ctx context.Context, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
 	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
-	GetCrossMutations(ctx context.Context) ([]db.FSMutation, error)
+	GetLocalMutations(ctx context.Context) ([]db.FSMutation, error)
+	GetPCloudVsLocalMutations(ctx context.Context) ([]db.FSMutation, error)
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
 	MarkSyncRequired(ctx context.Context, fsType db.FSType) error
 	MarkSyncInProgress(ctx context.Context, fsType db.FSType) error
@@ -59,8 +61,8 @@ func NewTracker(ctx context.Context, pCloudClient sdkClient, store storer) (*Tra
 
 // ListLatestPCloudContents moves all entries marked as VersionNew to VersionPrevious
 // (includes removing all entries marked as VersionPrevious) and then queries the contents
-// of '/' from PCloud recursively and stores the results as VersionNew.
-func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options) error {
+// of path from PCloud recursively and stores the results as VersionNew.
+func (t *Tracker) ListLatestPCloudContents(ctx context.Context, path string, opts ...Options) error {
 	cfg := config{
 		entriesChSize: 100,
 	}
@@ -68,12 +70,18 @@ func (t *Tracker) ListLatestPCloudContents(ctx context.Context, opts ...Options)
 		opt(&cfg)
 	}
 
-	err := t.markNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
+	lf, err := t.pCloudClient.ListFolder(ctx, sdk.T1FolderByPath(path), false, false, true, true)
+	if err != nil {
+		return err
+	}
+	folderID := lf.Metadata.FolderID
+
+	err = t.markNewFileSystemEntriesAsPrevious(ctx, db.PCloudFileSystem)
 	if err != nil {
 		return err
 	}
 
-	lf, err := t.pCloudClient.ListFolder(ctx, sdk.T1FolderByID(sdk.RootFolderID), true, true, false, false)
+	lf, err = t.pCloudClient.ListFolder(ctx, sdk.T1FolderByID(folderID), true, false, false, false)
 	if err != nil {
 		return err
 	}
@@ -262,7 +270,10 @@ func (t *Tracker) initSyncStatus(ctx context.Context) error {
 		}
 
 		if fsEmpty {
-			t.store.MarkSyncComplete(ctx, fsType)
+			err = t.store.MarkSyncComplete(ctx, fsType)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -310,11 +321,12 @@ func WithEntriesChannelSize(n int) Options {
 }
 
 func hashFileData(path string) (string, error) {
+	// nolint: gosec
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
-	defer func() { f.Close() }()
+	defer func() { _ = f.Close() }()
 
 	// nolint: gosec
 	cs := sha1.New()
@@ -341,10 +353,10 @@ func hashFileData(path string) (string, error) {
 	return fmt.Sprintf("%x", cs.Sum(nil)), nil
 }
 
-// FindCrossMutations determines all mutations that have taken place in PCloud between
-// VersionPrevious and VersionNew.
-func (t *Tracker) FindCrossMutations(ctx context.Context) ([]db.FSMutation, error) {
-	fsMutations, err := t.store.GetCrossMutations(ctx)
+// FindPCloudVsLocalMutations determines all mutations that have taken place between PCloud
+// vs Local.
+func (t *Tracker) FindPCloudVsLocalMutations(ctx context.Context) ([]db.FSMutation, error) {
+	fsMutations, err := t.store.GetPCloudVsLocalMutations(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -355,6 +367,16 @@ func (t *Tracker) FindCrossMutations(ctx context.Context) ([]db.FSMutation, erro
 // VersionPrevious and VersionNew.
 func (t *Tracker) FindPCloudMutations(ctx context.Context) ([]db.FSMutation, error) {
 	fsMutations, err := t.store.GetPCloudMutations(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return fsMutations, nil
+}
+
+// FindLocalMutations determines all mutations that have taken place in the Local file system
+// between VersionPrevious and VersionNew.
+func (t *Tracker) FindLocalMutations(ctx context.Context) ([]db.FSMutation, error) {
+	fsMutations, err := t.store.GetLocalMutations(ctx)
 	if err != nil {
 		return nil, err
 	}

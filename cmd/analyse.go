@@ -51,7 +51,7 @@ func analyse(c *cli.Context) error {
 	}
 
 	fmt.Println("ListLatestPCloudContents...")
-	err = track.ListLatestPCloudContents(ctx)
+	err = track.ListLatestPCloudContents(ctx, "/pcloud")
 	if err != nil {
 		return err
 	}
@@ -66,10 +66,20 @@ func analyse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:512]))
+	s := 1024
+	if len(j) < 1024 {
+		s = len(j)
+	}
+	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
-	fmt.Println("FindCrossMutations...")
-	fsm, err = track.FindCrossMutations(ctx)
+	fmt.Println("ListLatestLocalContents...")
+	err = track.ListLatestLocalContents(ctx, "/tmp/pcloudLocalFS")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("FindLocalMutations...")
+	fsm, err = track.FindLocalMutations(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,7 +88,11 @@ func analyse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Cross mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:1024]))
+	s = 1024
+	if len(j) < 1024 {
+		s = len(j)
+	}
+	fmt.Printf("PCloud vs Local mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
 	return nil
 }

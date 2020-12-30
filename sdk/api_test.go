@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"seborama/pcloud/sdk"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+	"seborama/pcloud/sdk"
 )
 
 type IntegrationTestSuite struct {

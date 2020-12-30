@@ -5,12 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker"
-	"seborama/pcloud/tracker/db"
 	"sort"
 	"testing"
 	"time"
+
+	"seborama/pcloud/sdk"
+	"seborama/pcloud/tracker"
+	"seborama/pcloud/tracker/db"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -84,14 +85,17 @@ func (testsuite *IntegrationTestSuite) TestListLatestPCloudContents() {
 	lf := pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7)
 
 	testsuite.pCloudClient.
-		On("ListFolder", testsuite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), true, true, false, false, []sdk.ClientOption(nil)).
+		On("ListFolder", testsuite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), false, false, true, true, []sdk.ClientOption(nil)).
+		Return(&sdk.FSList{Metadata: &sdk.Metadata{FolderID: 123}}, nil).
+		Once().
+		On("ListFolder", testsuite.ctx, mock.AnythingOfType("sdk.T1PathOrFolderID"), true, false, false, false, []sdk.ClientOption(nil)).
 		Return(lf, nil).
 		Once()
 
-	err := testsuite.tracker.ListLatestPCloudContents(testsuite.ctx, tracker.WithEntriesChannelSize(0))
+	err := testsuite.tracker.ListLatestPCloudContents(testsuite.ctx, "/", tracker.WithEntriesChannelSize(0))
 	testsuite.Require().NoError(err)
 
-	expected := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	expected := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	fsEntries, err := testsuite.store.GetLatestFileSystemEntries(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
@@ -108,14 +112,12 @@ func (testsuite *IntegrationTestSuite) TestListLatestPCloudContents() {
 
 func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	time1 := time.Now().Add(-24 * time.Hour)
-	time2 := time.Now().Add(-23 * time.Hour)
-	time3 := time.Now().Add(-22 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
@@ -212,14 +214,12 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 
 func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	time1 := time.Now().Add(-24 * time.Hour)
-	time2 := time.Now().Add(-23 * time.Hour)
-	time3 := time.Now().Add(-22 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
@@ -319,21 +319,19 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 
 func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	time1 := time.Now().Add(-24 * time.Hour)
-	time2 := time.Now().Add(-23 * time.Hour)
-	time3 := time.Now().Add(-22 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
 	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
-	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 = fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
 		if e.EntryID == 20002 {
@@ -376,21 +374,19 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 
 func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	time1 := time.Now().Add(-24 * time.Hour)
-	time2 := time.Now().Add(-23 * time.Hour)
-	time3 := time.Now().Add(-22 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
 	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
-	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 = fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, func(e db.FSEntry) db.FSEntry {
 		if e.EntryID == 20002 {
@@ -435,21 +431,19 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 
 func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 	time1 := time.Now().Add(-24 * time.Hour)
-	time2 := time.Now().Add(-23 * time.Hour)
-	time3 := time.Now().Add(-22 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
 	time6 := time.Now().Add(-19 * time.Hour)
 	time7 := time.Now().Add(-18 * time.Hour)
 
-	fse1 := fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 := fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
 	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
-	fse1 = fsEntrySample1(time1, time2, time3, time4, time5, time6, time7)
+	fse1 = fsEntrySample1(time1, time4, time5, time6, time7)
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
@@ -781,7 +775,7 @@ func pCloudFolderTreeSample1(time1, time2, time3, time4, time5, time6, time7 tim
 }
 
 // fsEntrySample1 counterpart to folderTreeSample1().
-func fsEntrySample1(time1, time2, time3, time4, time5, time6, time7 time.Time) []db.FSEntry {
+func fsEntrySample1(time1, time4, time5, time6, time7 time.Time) []db.FSEntry {
 	return []db.FSEntry{
 		{
 			FSType:         db.PCloudFileSystem,

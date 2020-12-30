@@ -6,10 +6,10 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"math"
-	"seborama/pcloud/sdk"
 	"time"
 
 	"github.com/google/uuid"
+	"seborama/pcloud/sdk"
 )
 
 func (testsuite *IntegrationTestSuite) Test_FileOps_ByPath() {

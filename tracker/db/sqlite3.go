@@ -12,11 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// SQLite3 is a sqlite3 database store.
 type SQLite3 struct {
 	dbPathFilename string
 	db             *sql.DB
 }
 
+// NewSQLite3 creates a new initialised SQLite3.
 func NewSQLite3(ctx context.Context, dbPath string) (*SQLite3, error) {
 	dbPathFilename := filepath.Join(dbPath, "tracker.db")
 
@@ -65,8 +67,11 @@ type config struct {
 	entriesChSize int
 }
 
+// Options defines the signature of a functional parameter for AddNewFileSystemEntries.
 type Options func(*config)
 
+// WithEntriesChannelSize is a functional parameter that allows to choose the size of the entries
+// channel used by AddNewFileSystemEntries.
 func WithEntriesChannelSize(n int) Options {
 	return func(obj *config) {
 		obj.entriesChSize = n
@@ -135,11 +140,13 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, opts ...Options) 
 	return entriesCh, errCh
 }
 
+// Close close the connection to sqlite3.
 func (s *SQLite3) Close() error {
 	return s.db.Close()
 }
 
 func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, version Version) ([]FSEntry, error) {
+	// nolint: rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT
@@ -163,7 +170,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	fsEntries := []FSEntry{}
 
@@ -232,15 +239,25 @@ const (
 // GetPCloudMutations returns a slice of mutations on the pCloud file system.
 // nolint: funlen
 func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) {
-	// nolint: gosec
+	return s.getFileSystemMutations(ctx, PCloudFileSystem)
+}
+
+// GetLocalMutations returns a slice of mutations on the local file system.
+// nolint: funlen
+func (s *SQLite3) GetLocalMutations(ctx context.Context) ([]FSMutation, error) {
+	return s.getFileSystemMutations(ctx, LocalFileSystem)
+}
+
+func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) ([]FSMutation, error) {
+	// nolint: gosec, rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`WITH previous AS (SELECT * FROM filesystem
 						   WHERE version = '`+string(VersionPrevious)+`'
-					         AND type = '`+string(PCloudFileSystem)+`'),
+					         AND type = '`+string(fsType)+`'),
 			  new AS (SELECT * FROM filesystem
 					  WHERE version = '`+string(VersionNew)+`'
-					    AND type = '`+string(PCloudFileSystem)+`')
+					    AND type = '`+string(fsType)+`')
 
 		SELECT
 			'`+string(MutationTypeDeleted)+`',
@@ -325,7 +342,7 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	fsMutations := []FSMutation{}
 
@@ -360,10 +377,10 @@ func (s *SQLite3) GetPCloudMutations(ctx context.Context) ([]FSMutation, error) 
 	return fsMutations, nil
 }
 
-// GetCrossMutations returns a slice of mutations that exist between the pCloud file system
+// GetPCloudVsLocalMutations returns a slice of mutations that exist between the pCloud file system
 // and the local file system.
-func (s *SQLite3) GetCrossMutations(ctx context.Context) ([]FSMutation, error) {
-	// nolint: gosec
+func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) ([]FSMutation, error) {
+	// nolint: gosec, rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`WITH local AS (SELECT * FROM filesystem
@@ -375,88 +392,88 @@ func (s *SQLite3) GetCrossMutations(ctx context.Context) ([]FSMutation, error) {
 
 		SELECT
 			'`+string(MutationTypeDeleted)+`',
-			previous.type,
-			previous.version,
-			previous.device_id,
-			previous.entry_id,
-			previous.is_folder,
-			previous.path,
-			previous.name,
-			previous.parent_folder_id,
-			previous.created,
-			previous.modified,
-			previous.size,
-			previous.hash
-		 FROM previous LEFT OUTER JOIN new USING (device_id, entry_id)
-		 WHERE new.entry_id IS NULL
+			local.type,
+			local.version,
+			local.device_id,
+			local.entry_id,
+			local.is_folder,
+			local.path,
+			local.name,
+			local.parent_folder_id,
+			local.created,
+			local.modified,
+			local.size,
+			local.hash
+		 FROM local LEFT OUTER JOIN pcloud USING (device_id, entry_id)
+		 WHERE pcloud.entry_id IS NULL
 		
 		 UNION
 		
 		 SELECT
 			'`+string(MutationTypeCreated)+`',
-			new.type,
-			new.version,
-			new.device_id,
-			new.entry_id,
-			new.is_folder,
-			new.path,
-			new.name,
-			new.parent_folder_id,
-			new.created,
-			new.modified,
-			new.size,
-			new.hash
-		 FROM new LEFT OUTER JOIN previous USING (device_id, entry_id)
-		 WHERE previous.entry_id IS NULL
+			pcloud.type,
+			pcloud.version,
+			pcloud.device_id,
+			pcloud.entry_id,
+			pcloud.is_folder,
+			pcloud.path,
+			pcloud.name,
+			pcloud.parent_folder_id,
+			pcloud.created,
+			pcloud.modified,
+			pcloud.size,
+			pcloud.hash
+		 FROM pcloud LEFT OUTER JOIN local USING (device_id, entry_id)
+		 WHERE local.entry_id IS NULL
 
 		 UNION
 
 		 SELECT
 			'`+string(MutationTypeModified)+`',
-			new.type,
-			new.version,
-			new.device_id,
-			new.entry_id,
-			new.is_folder,
-			new.path,
-			new.name,
-			new.parent_folder_id,
-			new.created,
-			new.modified,
-			new.size,
-			new.hash
-		 FROM new JOIN previous USING (device_id, entry_id)
-		 WHERE new.parent_folder_id = previous.parent_folder_id
+			pcloud.type,
+			pcloud.version,
+			pcloud.device_id,
+			pcloud.entry_id,
+			pcloud.is_folder,
+			pcloud.path,
+			pcloud.name,
+			pcloud.parent_folder_id,
+			pcloud.created,
+			pcloud.modified,
+			pcloud.size,
+			pcloud.hash
+		 FROM pcloud JOIN local USING (device_id, entry_id)
+		 WHERE pcloud.parent_folder_id = local.parent_folder_id
 		 	AND (
 				-- hash is not relevant for folders and that's just fine
-				new.hash != previous.hash
+				pcloud.hash != local.hash
 			)
 
 		 UNION
 
 		 SELECT
 			'`+string(MutationTypeMoved)+`',
-			new.type,
-			new.version,
-			new.device_id,
-			new.entry_id,
-			new.is_folder,
-			new.path,
-			new.name,
-			new.parent_folder_id,
-			new.created,
-			new.modified,
-			new.size,
-			new.hash
-		  FROM new JOIN previous USING (device_id, entry_id)
+			pcloud.type,
+			pcloud.version,
+			pcloud.device_id,
+			pcloud.entry_id,
+			pcloud.is_folder,
+			pcloud.path,
+			pcloud.name,
+			pcloud.parent_folder_id,
+			pcloud.created,
+			pcloud.modified,
+			pcloud.size,
+			pcloud.hash
+		  FROM pcloud JOIN local USING (device_id, entry_id)
 		 -- it should be noted that a file may both move and change
-		 WHERE new.parent_folder_id != previous.parent_folder_id
+		 WHERE pcloud.parent_folder_id != local.parent_folder_id
 		 `,
 	)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	fsMutations := []FSMutation{}
 
@@ -501,11 +518,26 @@ const (
 	PCloudFileSystem FSType = "pCloud"
 )
 
+// SyncStatus defines the status of the sync. It is used to prevent refreshing data in the
+// filesystem table when it has not yet been completely sync'ed.
+// In particular, VersionPrevious should not be replaced with new data until the sync has
+// completed or some delta changes between "previous" and "new" will be lost and non-replicated.
+// This should not be confused with the sync that takes place across filesystems (such as cloud
+// vs local) which only involves VersionNew of each filesystems.
+// It is always safe to update VersionNew (but not VersionPrevious until processed).
 type SyncStatus string
 
 const (
-	SyncStatusComplete   SyncStatus = "Complete"
-	SyncStatusRequired   SyncStatus = "Required"
+	// SyncStatusComplete indicates VersionPrevious has been completely sync'ed and can now be
+	// replaced with newer data.
+	SyncStatusComplete SyncStatus = "Complete"
+
+	// SyncStatusRequired indicates VersionPrevious has just been refreshed and requires
+	// sync'ing against VersionNew.
+	SyncStatusRequired SyncStatus = "Required"
+
+	// SyncStatusInProgress indicates that the sync between VersionPrevious and VersionNew is in
+	// progress.
 	SyncStatusInProgress SyncStatus = "In progress"
 )
 
@@ -610,6 +642,8 @@ func (s *SQLite3) GetSyncStatus(ctx context.Context, fsType FSType) (SyncStatus,
 	return SyncStatus(status), errors.WithStack(err)
 }
 
+// IsFileSystemEmpty returns true if no entry data exists at all in the database for `fsType`,
+// otherwise it returns false.
 func (s *SQLite3) IsFileSystemEmpty(ctx context.Context, fsType FSType) (bool, error) {
 	previousRowsCount := 0
 

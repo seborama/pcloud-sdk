@@ -1,10 +1,10 @@
 package sdk_test
 
 import (
-	"seborama/pcloud/sdk"
 	"time"
 
 	"github.com/google/uuid"
+	"seborama/pcloud/sdk"
 )
 
 func (testsuite *IntegrationTestSuite) Test_GetFileLink() {

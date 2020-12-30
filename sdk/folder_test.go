@@ -2,9 +2,9 @@ package sdk_test
 
 import (
 	"fmt"
-	"seborama/pcloud/sdk"
 
 	"github.com/google/uuid"
+	"seborama/pcloud/sdk"
 )
 
 func (testsuite *IntegrationTestSuite) Test_FolderOperations_ByPath() {

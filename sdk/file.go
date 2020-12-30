@@ -233,7 +233,7 @@ func prepareForm(files map[string]*os.File) (string, []byte, error) {
 	var b bytes.Buffer
 
 	w := multipart.NewWriter(&b)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 
 	for destName, f := range files {
 		fw, err := w.CreateFormFile(destName, destName)
@@ -248,7 +248,10 @@ func prepareForm(files map[string]*os.File) (string, []byte, error) {
 	}
 
 	// close the multipart writer to ensure the terminating boundary is written.
-	w.Close()
+	err := w.Close()
+	if err != nil {
+		return "", nil, errors.WithStack(err)
+	}
 
 	return w.FormDataContentType(), b.Bytes(), nil
 }

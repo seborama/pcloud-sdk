@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"seborama/pcloud/tracker/db/migrations"
 
 	// sqllite3 sql driver.
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
+	"seborama/pcloud/tracker/db/migrations"
 )
 
 type Migrator struct {

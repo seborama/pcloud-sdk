@@ -3,11 +3,11 @@ package db_test
 import (
 	"context"
 	"os"
-	"seborama/pcloud/tracker/db"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
+	"seborama/pcloud/tracker/db"
 )
 
 func TestSQLite3_MigrationsSuccess(t *testing.T) {
