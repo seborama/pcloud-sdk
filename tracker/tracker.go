@@ -27,9 +27,10 @@ type sdkClient interface {
 type storer interface {
 	AddNewFileSystemEntries(ctx context.Context, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsType db.FSType) ([]db.FSEntry, error)
-	GetPCloudMutations(ctx context.Context) ([]db.FSMutation, error)
-	GetLocalMutations(ctx context.Context) ([]db.FSMutation, error)
-	GetPCloudVsLocalMutations(ctx context.Context) ([]db.FSMutation, error)
+	GetPCloudMutations(ctx context.Context) (db.FSMutations, error)
+	GetLocalMutations(ctx context.Context) (db.FSMutations, error)
+	GetPCloudVsLocalMutations(ctx context.Context) (db.FSMutations, error)
+	DeleteVersionNew(ctx context.Context, fsType db.FSType) error
 	MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType db.FSType) error
 	MarkSyncRequired(ctx context.Context, fsType db.FSType) error
 	MarkSyncInProgress(ctx context.Context, fsType db.FSType) error
@@ -286,11 +287,17 @@ func (t *Tracker) markNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 		return errors.WithMessage(err, "database error or sync has not been initialised")
 	}
 
-	if status != db.SyncStatusComplete {
+	switch status {
+	case db.SyncStatusRequired:
+		// TODO: add a test for this scenario
+		return t.store.DeleteVersionNew(ctx, fsType)
+
+	case db.SyncStatusComplete:
+		return t.store.MarkNewFileSystemEntriesAsPrevious(ctx, fsType)
+
+	default:
 		return errors.Errorf("markNewFileSystemEntriesAsPrevious requires sync status '%s' but status is currently '%s'", db.SyncStatusComplete, status)
 	}
-
-	return t.store.MarkNewFileSystemEntriesAsPrevious(ctx, fsType)
 }
 
 func (t *Tracker) markSyncAsRequired(ctx context.Context, fsType db.FSType) error {
@@ -355,7 +362,7 @@ func hashFileData(path string) (string, error) {
 
 // FindPCloudVsLocalMutations determines all mutations that have taken place between PCloud
 // vs Local.
-func (t *Tracker) FindPCloudVsLocalMutations(ctx context.Context) ([]db.FSMutation, error) {
+func (t *Tracker) FindPCloudVsLocalMutations(ctx context.Context) (db.FSMutations, error) {
 	fsMutations, err := t.store.GetPCloudVsLocalMutations(ctx)
 	if err != nil {
 		return nil, err
@@ -365,7 +372,7 @@ func (t *Tracker) FindPCloudVsLocalMutations(ctx context.Context) ([]db.FSMutati
 
 // FindPCloudMutations determines all mutations that have taken place in PCloud between
 // VersionPrevious and VersionNew.
-func (t *Tracker) FindPCloudMutations(ctx context.Context) ([]db.FSMutation, error) {
+func (t *Tracker) FindPCloudMutations(ctx context.Context) (db.FSMutations, error) {
 	fsMutations, err := t.store.GetPCloudMutations(ctx)
 	if err != nil {
 		return nil, err
@@ -375,7 +382,7 @@ func (t *Tracker) FindPCloudMutations(ctx context.Context) ([]db.FSMutation, err
 
 // FindLocalMutations determines all mutations that have taken place in the Local file system
 // between VersionPrevious and VersionNew.
-func (t *Tracker) FindLocalMutations(ctx context.Context) ([]db.FSMutation, error) {
+func (t *Tracker) FindLocalMutations(ctx context.Context) (db.FSMutations, error) {
 	fsMutations, err := t.store.GetLocalMutations(ctx)
 	if err != nil {
 		return nil, err

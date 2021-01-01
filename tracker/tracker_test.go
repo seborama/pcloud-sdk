@@ -121,8 +121,11 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
+	err := testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
+
 	// nolint: dupl
-	expected := []db.FSMutation{
+	expected := db.FSMutations{
 		{
 			Type:    db.MutationTypeCreated,
 			Version: db.VersionNew,
@@ -202,7 +205,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
-	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
 	}
 	sort.Slice(expected, sortedMutations(expected))
@@ -226,8 +229,11 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	err := testsuite.store.MarkNewFileSystemEntriesAsPrevious(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
+	err = testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
+
 	// nolint: dupl
-	expected := []db.FSMutation{
+	expected := db.FSMutations{
 		{
 			Type:    db.MutationTypeDeleted,
 			Version: db.VersionPrevious,
@@ -307,7 +313,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
-	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
 	}
 	sort.Slice(expected, sortedMutations(expected))
@@ -340,7 +346,10 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 		return e
 	})
 
-	expected := []db.FSMutation{
+	err = testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
+
+	expected := db.FSMutations{
 		{
 			Type:    db.MutationTypeModified,
 			Version: db.VersionNew,
@@ -362,7 +371,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
-	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
 	}
 	sort.Slice(expected, sortedMutations(expected))
@@ -397,7 +406,10 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 		return e
 	})
 
-	expected := []db.FSMutation{
+	err = testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
+
+	expected := db.FSMutations{
 		{
 			Type:    db.MutationTypeMoved,
 			Version: db.VersionNew,
@@ -419,7 +431,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
-	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
 	}
 	sort.Slice(expected, sortedMutations(expected))
@@ -447,12 +459,15 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 
 	testsuite.addNewFileSystemEntries(fse1, nil)
 
-	expected := []db.FSMutation{}
+	err = testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
+	testsuite.Require().NoError(err)
+
+	expected := db.FSMutations{}
 
 	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
-	sortedMutations := func(elements []db.FSMutation) func(i, j int) bool {
+	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
 		return func(i, j int) bool { return elements[i].EntryID < elements[j].EntryID }
 	}
 	sort.Slice(expected, sortedMutations(expected))

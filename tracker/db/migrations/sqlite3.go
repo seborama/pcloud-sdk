@@ -33,7 +33,47 @@ var SQLite3 = []string{
 			PRIMARY KEY (type, version, device_id, entry_id)
 		);
 
-		CREATE INDEX IF NOT EXISTS device_entry ON filesystem (device_id, entry_id);
+		CREATE INDEX IF NOT EXISTS filesystem_device_entry ON filesystem (device_id, entry_id);
+		CREATE INDEX IF NOT EXISTS filesystem_device_entry ON filesystem (path, name);
+
+		CREATE TABLE IF NOT EXISTS "staging_cross_mutations" (
+			"mutation_type"     VARCHAR,
+			"fs_type"           VARCHAR,
+			"device_id"         VARCHAR,
+			"entry_id"          VARCHAR,
+			-- "is_folder"         BOOL DEFAULT FALSE,
+			-- "path"              VARCHAR NOT NULL,
+			-- "name"              VARCHAR NOT NULL,
+			-- "parent_folder_id"  VARCHAR NOT NULL,
+			-- "created"           DATETIME NOT NULL,
+			-- "modified"          DATETIME NOT NULL,
+			-- "size"              INTEGER NULL, -- only valid for files
+			-- "hash"              VARCHAR NULL, -- only valid for files
+
+			-- a file can both mutate and move
+			PRIMARY KEY (mutation_type, fs_type, device_id, entry_id)
+		);
+
+		CREATE TABLE IF NOT EXISTS "staging_fs_mutations" (
+			"mutation_type"     VARCHAR,
+			"fs_type"           VARCHAR,
+			"version"           VARCHAR,
+			"device_id"         VARCHAR,
+			"entry_id"          VARCHAR,
+			-- "is_folder"         BOOL DEFAULT FALSE,
+			-- "path"              VARCHAR NOT NULL,
+			-- "name"              VARCHAR NOT NULL,
+			-- "parent_folder_id"  VARCHAR NOT NULL,
+			-- "created"           DATETIME NOT NULL,
+			-- "modified"          DATETIME NOT NULL,
+			-- "size"              INTEGER NULL, -- only valid for files
+			-- "hash"              VARCHAR NULL, -- only valid for files
+
+			-- a file can both mutate and move
+			PRIMARY KEY (mutation_type, fs_type, version, device_id, entry_id)
+		);
+
+		CREATE INDEX IF NOT EXISTS staging_fs_mutations_fstype_version_device_entry ON staging_fs_mutations (fs_type, version, device_id, entry_id);
 
 		COMMIT;`,
 }
