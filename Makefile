@@ -19,7 +19,7 @@ build:
 	 echo "Binary created at /tmp/pcloud"
 
 .phony: test
-test: test-sdk test-tracker
+test: test-sdk test-tracker test-sync
 
 test-sdk:
 	@[ -n "$$GO_PCLOUD_USERNAME" ] || read -p "user? " GO_PCLOUD_USERNAME ; \
