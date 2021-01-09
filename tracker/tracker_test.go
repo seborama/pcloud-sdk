@@ -9,14 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker"
-	"seborama/pcloud/tracker/db"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"seborama/pcloud/sdk"
+	"seborama/pcloud/tracker"
+	"seborama/pcloud/tracker/db"
 )
 
 type IntegrationTestSuite struct {

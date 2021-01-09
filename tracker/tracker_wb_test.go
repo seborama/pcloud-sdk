@@ -8,11 +8,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"seborama/pcloud/tracker/db"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"seborama/pcloud/tracker/db"
 )
 
 func TestHashFileData(t *testing.T) {

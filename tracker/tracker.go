@@ -12,11 +12,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pkg/errors"
 	"seborama/pcloud/sdk"
 	"seborama/pcloud/tracker/archos"
 	"seborama/pcloud/tracker/db"
-
-	"github.com/pkg/errors"
 )
 
 type sdkClient interface {

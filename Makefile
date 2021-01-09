@@ -30,6 +30,9 @@ test-sdk:
 test-tracker:
 	@go test -v -count 1 $(GO_RACE) -timeout 20s ./tracker
 
+test-sync:
+	@go test -v -count 1 $(GO_RACE) -timeout 20s ./sync
+
 .phony: lint
 lint:
 	@which golangci-lint || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v1.33.0
