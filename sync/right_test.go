@@ -219,7 +219,83 @@ func TestRightSync_Deleted(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRightSync_Modified(t *testing.T) {}
+func TestRightSync_Modified(t *testing.T) {
+	ctx := context.Background()
+
+	expectedFSMutations := db.FSMutations{
+		{
+			Type:    db.MutationTypeCreated,
+			Version: db.VersionNew,
+			FSEntry: db.FSEntry{
+				FSType:         db.PCloudFileSystem,
+				DeviceID:       "dev-id",
+				EntryID:        100201,
+				IsFolder:       false,
+				Path:           "/Folder2",
+				Name:           "File2-1",
+				ParentFolderID: 1002,
+				Created:        time.Time{},
+				Modified:       time.Time{},
+				Size:           100,
+				Hash:           "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0", // SHA1 of "Hello"
+			},
+		},
+	}
+
+	fileMatcher := mock.MatchedBy(
+		func(p func(q url.Values)) bool {
+			q := url.Values{}
+			p(q)
+			return assert.Equal(t, "100201", q.Get("fileid"))
+		})
+
+	pCloudClient := MockSDKClient{}
+	defer func() { _ = pCloudClient.AssertExpectations(t) }()
+	pCloudClient.
+		On("FileOpen", ctx, uint64(0), fileMatcher, []sdk.ClientOption(nil)).
+		Return(&sdk.File{
+			FD:     123,
+			FileID: 100201,
+		}, nil).
+		Once().
+		On("FileRead", ctx, uint64(123), []sdk.ClientOption(nil)).
+		Return([]byte("Hello"), io.EOF).
+		Once().
+		On("FileClose", ctx, uint64(123), []sdk.ClientOption(nil)).
+		Return(nil).
+		Once()
+
+	channelMatcher := func() interface{} {
+		count := 0
+		return mock.MatchedBy(
+			func(dataCh <-chan []byte) bool {
+				count++
+				if count >= 1 {
+					return true
+				}
+				data := <-dataCh
+				return assert.Equal(t, []byte("Hello"), data)
+			})
+	}()
+
+	localClient := MockLocalClient{}
+	defer func() { _ = localClient.AssertExpectations(t) }()
+	localClient.
+		On("MkFile", ctx, "/Folder2/File2-1", channelMatcher).
+		Return(nil).
+		Once()
+
+	fsTracker := MockFSTracker{}
+	defer func() { _ = fsTracker.AssertExpectations(t) }()
+	fsTracker.
+		On("FindPCloudVsLocalMutations", ctx).
+		Return(expectedFSMutations, nil).
+		Once()
+
+	s := sync.NewSync(&fsTracker, &pCloudClient, &localClient)
+	err := s.Right(ctx)
+	require.NoError(t, err)
+}
 
 func TestRightSync_Moved(t *testing.T) {}
 

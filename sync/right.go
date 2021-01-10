@@ -57,7 +57,7 @@ func (s *Sync) Right(ctx context.Context) error {
 			s.delete(ctx, m)
 
 		case db.MutationTypeModified:
-			panic("not yet implemented")
+			s.update(ctx, m)
 
 		case db.MutationTypeMoved:
 			panic("not yet implemented")
@@ -172,4 +172,13 @@ func (s *Sync) deleteFile(ctx context.Context, fsMutation db.FSMutation) (err er
 	default:
 		return errors.Errorf("unknown file system type '%s'", string(fsMutation.FSType))
 	}
+}
+
+func (s *Sync) update(ctx context.Context, fsMutation db.FSMutation) error {
+	if fsMutation.IsFolder {
+		return errors.Errorf("unexpected: received update for a folder: folderID='%d' path='%s' name='%s'", fsMutation.EntryID, fsMutation.Path, fsMutation.Name)
+	}
+
+	// TODO: refactor and optimise for block-level (differential) copying
+	return s.createFile(ctx, fsMutation)
 }
