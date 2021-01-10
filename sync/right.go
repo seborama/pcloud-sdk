@@ -26,6 +26,8 @@ type localClient interface {
 	MkFile(ctx context.Context, path string, dataCh <-chan []byte) error
 	RmDir(ctx context.Context, path string) error
 	RmFile(ctx context.Context, path string) error
+	MvDir(ctx context.Context, fromPath, toPath string) error
+	MvFile(ctx context.Context, fromPath, toPath string) error
 }
 
 type Sync struct {
@@ -60,7 +62,7 @@ func (s *Sync) Right(ctx context.Context) error {
 			s.update(ctx, m)
 
 		case db.MutationTypeMoved:
-			panic("not yet implemented")
+			s.move(ctx, m)
 
 		default:
 			return errors.Errorf("unknown mutation type '%s'", string(m.Type))
@@ -181,4 +183,38 @@ func (s *Sync) update(ctx context.Context, fsMutation db.FSMutation) error {
 
 	// TODO: refactor and optimise for block-level (differential) copying
 	return s.createFile(ctx, fsMutation)
+}
+
+func (s *Sync) move(ctx context.Context, fsMutation db.FSMutation) error {
+	if fsMutation.IsFolder {
+		return s.moveFolder(ctx, fsMutation)
+	}
+
+	return s.moveFile(ctx, fsMutation)
+}
+
+func (s *Sync) moveFolder(ctx context.Context, fsMutation db.FSMutation) error {
+	switch fsMutation.FSType {
+	case db.PCloudFileSystem:
+		return s.localClient.MvDir(ctx, filepath.Join(fsMutation.Path, fsMutation.Name), toSomePlace)
+
+	case db.LocalFileSystem:
+		panic("not yet implemented")
+
+	default:
+		return errors.Errorf("unknown file system type '%s'", string(fsMutation.FSType))
+	}
+}
+
+func (s *Sync) moveFile(ctx context.Context, fsMutation db.FSMutation) (err error) {
+	switch fsMutation.FSType {
+	case db.PCloudFileSystem:
+		return s.localClient.MvFile(ctx, filepath.Join(fsMutation.Path, fsMutation.Name), toSomePlace)
+
+	case db.LocalFileSystem:
+		panic("not yet implemented")
+
+	default:
+		return errors.Errorf("unknown file system type '%s'", string(fsMutation.FSType))
+	}
 }

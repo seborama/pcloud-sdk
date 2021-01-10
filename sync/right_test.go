@@ -237,7 +237,7 @@ func TestRightSync_Modified(t *testing.T) {
 				Created:        time.Time{},
 				Modified:       time.Time{},
 				Size:           100,
-				Hash:           "f7ff9e8b7bb2e09b70935a5d785e0cc5d9d0abf0", // SHA1 of "Hello"
+				Hash:           "file2-1-hash-2",
 			},
 		},
 	}
