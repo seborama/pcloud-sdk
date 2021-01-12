@@ -217,24 +217,22 @@ func (s *SQLite3) GetLatestFileSystemEntries(ctx context.Context, fsType FSType)
 
 // FSMutation contains a file system mutation: type and details.
 type FSMutation struct {
-	Type MutationType
+	Type    MutationType
+	Details EntryMutations
+}
+
+// EntryMutations contains the details of the mutation of an entry.
+// There will be only one entry in the case of a Creation or a Deletion.
+// There will be 2 entries in the case of an Update or a Modification, in which case the first
+// entry will be the "from" state and the second will be the "to" state.
+type EntryMutations []VersionedEntry
+
+type VersionedEntry struct {
 	Version
 	FSEntry
 }
 
 type FSMutations []FSMutation
-
-func (fsm FSMutations) Filter(mType MutationType) FSMutations {
-	fsMutations := FSMutations{}
-
-	for _, el := range fsm {
-		if el.Type == mType {
-			fsMutations = append(fsMutations, el)
-		}
-	}
-
-	return fsMutations
-}
 
 // MutationType describes the type of mutation of a file system.
 type MutationType string
@@ -269,56 +267,92 @@ func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, e
 			    fs.size,
 			    fs.hash
 		 FROM staging_cross_mutations scm
-			  LEFT OUTER JOIN filesystem fs USING (fs_type, device_id, entry_id)
-		 WHERE fs.version = :version_new`,
-		sql.Named("version_new", VersionNew),
+			  LEFT OUTER JOIN filesystem fs USING (fs_type, device_id, entry_id)`,
 	)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 	defer func() { _ = rows.Close() }()
 
+	return processFSMutationsRows(rows)
+}
+
+func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
+	panic("MUST ENSURE SQL APPLIES AN 'ORDER BY' so that entries are 'paired' when they're related to the same mutation")
 	fsMutations := FSMutations{}
+	fsm := FSMutation{}
+	previousEntryKey := ""
 
 	for rows.Next() {
-		fsMutation := FSMutation{}
-		err = rows.Scan(
-			&fsMutation.Type,
-			&fsMutation.FSType,
-			&fsMutation.Version,
-			&fsMutation.DeviceID,
-			&fsMutation.EntryID,
-			&fsMutation.IsFolder,
-			&fsMutation.Path,
-			&fsMutation.Name,
-			&fsMutation.ParentFolderID,
-			&fsMutation.Created,
-			&fsMutation.Modified,
-			&fsMutation.Size,
-			&fsMutation.Hash,
-		)
+		mType, version, fsEntry, err := getMutationDetails(rows)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
-		fsMutations = append(fsMutations, fsMutation)
+
+		newEntryKey := fmt.Sprintf("%s%s%d", fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
+		if newEntryKey != previousEntryKey {
+			fsMutations = append(fsMutations, fsm)
+			fsm = FSMutation{
+				Type: *mType,
+			}
+		}
+
+		ve := VersionedEntry{
+			Version: *version,
+			FSEntry: *fsEntry,
+		}
+
+		// TODO: check mType is the same for all entries in FSMutation.Mutation?
+		fsm.Details = append(fsm.Details, ve) // TODO: check that a duplicate value is not already present?
+		previousEntryKey = newEntryKey
 	}
 
-	err = rows.Err()
+	err := rows.Err()
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	return fsMutations, nil
+	fsMutations = append(fsMutations, fsm)
+
+	return fsMutations[1:], nil
+}
+
+func getMutationDetails(rows *sql.Rows) (*MutationType, *Version, *FSEntry, error) {
+	var (
+		mType   MutationType
+		version Version
+		fsEntry FSEntry
+	)
+
+	err := rows.Scan(
+		&mType,
+		&fsEntry.FSType,
+		&version,
+		&fsEntry.DeviceID,
+		&fsEntry.EntryID,
+		&fsEntry.IsFolder,
+		&fsEntry.Path,
+		&fsEntry.Name,
+		&fsEntry.ParentFolderID,
+		&fsEntry.Created,
+		&fsEntry.Modified,
+		&fsEntry.Size,
+		&fsEntry.Hash,
+	)
+	if err != nil {
+		return nil, nil, nil, errors.WithStack(err)
+	}
+
+	return &mType, &version, &fsEntry, nil
 }
 
 // GetPCloudMutations returns a slice of mutations on the pCloud file system.
-// nolint: funlen
+// It should be noted that up to two rows may be created: one for each version: previous and new.
 func (s *SQLite3) GetPCloudMutations(ctx context.Context) (FSMutations, error) {
 	return s.getFileSystemMutations(ctx, PCloudFileSystem)
 }
 
 // GetLocalMutations returns a slice of mutations on the local file system.
-// nolint: funlen
 func (s *SQLite3) GetLocalMutations(ctx context.Context) (FSMutations, error) {
 	return s.getFileSystemMutations(ctx, LocalFileSystem)
 }
@@ -342,7 +376,6 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 		 FROM staging_fs_mutations scm
 			  LEFT OUTER JOIN filesystem fs
 			  ON scm.fs_type = fs.type
-			  	 AND scm.version = fs.version
 			  	 AND scm.device_id = fs.device_id
 			  	 AND scm.entry_id = fs.entry_id
 		 WHERE scm.fs_type = :fstype`,
@@ -353,37 +386,7 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 	}
 	defer func() { _ = rows.Close() }()
 
-	fsMutations := FSMutations{}
-
-	for rows.Next() {
-		fsMutation := FSMutation{}
-		err = rows.Scan(
-			&fsMutation.Type,
-			&fsMutation.FSType,
-			&fsMutation.Version,
-			&fsMutation.DeviceID,
-			&fsMutation.EntryID,
-			&fsMutation.IsFolder,
-			&fsMutation.Path,
-			&fsMutation.Name,
-			&fsMutation.ParentFolderID,
-			&fsMutation.Created,
-			&fsMutation.Modified,
-			&fsMutation.Size,
-			&fsMutation.Hash,
-		)
-		if err != nil {
-			return nil, errors.WithStack(err)
-		}
-		fsMutations = append(fsMutations, fsMutation)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	return fsMutations, nil
+	return processFSMutationsRows(rows)
 }
 
 // TODO: for this to work reliably, path needs to be standardised (i.e. \ or /, C: or /, etc).

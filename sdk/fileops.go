@@ -91,6 +91,10 @@ func (c *Client) FileWrite(ctx context.Context, fd uint64, data []byte, opts ...
 // You can see how to send data here: https://docs.pcloud.com/methods/fileops/index.html
 // https://docs.pcloud.com/methods/fileops/file_read.html
 func (c *Client) FileRead(ctx context.Context, fd, count uint64, opts ...ClientOption) ([]byte, error) {
+	// TODO - BUG? - For better Golang compliance, EOF should be returned when all data was read
+	//        AND EOF has been reached. In the current implementation, EOF is returned when some
+	//        data was read but EOF was reached. This means both data and EOF are returned at the
+	//        same time. This is not as per os.File.Read()'s specification which returns "0, EOF".
 	q := toQuery(opts...)
 
 	q.Add("fd", fmt.Sprintf("%d", fd))
