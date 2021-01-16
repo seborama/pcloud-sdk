@@ -25,13 +25,13 @@ test-sdk:
 	@[ -n "$$GO_PCLOUD_USERNAME" ] || read -p "user? " GO_PCLOUD_USERNAME ; \
 	 [ -n "$$GO_PCLOUD_PASSWORD" ] || { read -s -p "pass? " GO_PCLOUD_PASSWORD && echo; } ; \
 	 [ -n "$$GO_PCLOUD_TFA_CODE" ] || { read -s -p "tfa code? " GO_PCLOUD_TFA_CODE && echo; } ; \
-	 GO_PCLOUD_USERNAME="$$GO_PCLOUD_USERNAME" GO_PCLOUD_PASSWORD="$$GO_PCLOUD_PASSWORD" GO_PCLOUD_TFA_CODE="$$GO_PCLOUD_TFA_CODE" go test -v -count 1 $(GO_RACE) -timeout 20s ./sdk
+	 GO_PCLOUD_USERNAME="$$GO_PCLOUD_USERNAME" GO_PCLOUD_PASSWORD="$$GO_PCLOUD_PASSWORD" GO_PCLOUD_TFA_CODE="$$GO_PCLOUD_TFA_CODE" go test -v -count 1 $(GO_RACE) -timeout 20s ./sdk/...
 
 test-tracker:
-	@go test -v -count 1 $(GO_RACE) -timeout 20s ./tracker
+	@go test -v -count 1 $(GO_RACE) -timeout 20s ./tracker/...
 
 test-sync:
-	@go test -v -count 1 $(GO_RACE) -timeout 20s ./sync
+	@go test -v -count 1 $(GO_RACE) -timeout 20s ./sync/...
 
 .phony: lint
 lint:

@@ -278,13 +278,6 @@ func TestRightSync_Modified(t *testing.T) {
 		},
 	}
 
-	// fileMatcher := mock.MatchedBy(
-	// 	func(p func(q url.Values)) bool {
-	// 		q := url.Values{}
-	// 		p(q)
-	// 		return assert.Equal(t, "100201", q.Get("fileid"))
-	// 	})
-
 	dataCh := make(chan []byte)
 	errCh := make(chan error)
 
