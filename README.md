@@ -8,9 +8,13 @@ NOTE: I'm **not** affiliated to pCloud so this project is as good or as bad as i
 
 See [SDK](sdk/README.md).
 
-## Tracker (sync)
+## Tracker (file system mutations)
 
 See [Tracker](tracker/README.md).
+
+## Sync (file system synchronisation)
+
+See [Sync](sync/README.md).
 
 ## History
 
@@ -27,6 +31,8 @@ While [pCloud's console client](https://github.com/pcloudcom/console-client) see
 2. implement a sync command.
 
 3. CLI for basic pCloud interactions (copy, move, etc)
+
+4. Fuse integration (Linux)
 
 ## pCloud API documentation
 
