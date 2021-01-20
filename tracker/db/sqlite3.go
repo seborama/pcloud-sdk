@@ -254,10 +254,10 @@ func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, e
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT scm.mutation_type,
-				scm.fs_type,
+				fs.type,
 				fs.version,
-			    scm.device_id,
-			    scm.entry_id,
+			    fs.device_id,
+			    fs.entry_id,
 			    fs.is_folder,
 			    fs.path,
 			    fs.name,
@@ -267,7 +267,11 @@ func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, e
 			    fs.size,
 			    fs.hash
 		 FROM staging_cross_mutations scm
-			  LEFT OUTER JOIN filesystem fs USING (fs_type, device_id, entry_id)`,
+			  LEFT OUTER JOIN filesystem fs
+			  ON scm.fs_type = fs.type
+			     AND scm.device_id = fs.device_id
+				 AND scm.entry_id = fs.entry_id
+		 ORDER BY scm.mutation_type, fs.entry_id, fs.version DESC`, // `fs.version DESC`: `Previous` before `New`
 	)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -278,7 +282,6 @@ func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, e
 }
 
 func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
-	panic("MUST ENSURE SQL APPLIES AN 'ORDER BY' so that entries are 'paired' when they're related to the same mutation")
 	fsMutations := FSMutations{}
 	fsm := FSMutation{}
 	previousEntryKey := ""
@@ -361,10 +364,10 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT scm.mutation_type,
-			    scm.fs_type,
-			    scm.version,
-			    scm.device_id,
-			    scm.entry_id,
+			    fs.type,
+			    fs.version,
+			    fs.device_id,
+			    fs.entry_id,
 			    fs.is_folder,
 			    fs.path,
 			    fs.name,
@@ -378,7 +381,8 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 			  ON scm.fs_type = fs.type
 			  	 AND scm.device_id = fs.device_id
 			  	 AND scm.entry_id = fs.entry_id
-		 WHERE scm.fs_type = :fstype`,
+		 WHERE scm.fs_type = :fstype
+		 ORDER BY scm.mutation_type, fs.entry_id, fs.version DESC`, // `fs.version DESC`: `Previous` before `New`
 		sql.Named("fstype", fsType),
 	)
 	if err != nil {

@@ -256,7 +256,7 @@ func TestRightSync_Modified(t *testing.T) {
 
 	expectedFSMutations := db.FSMutations{
 		{
-			Type: db.MutationTypeCreated,
+			Type: db.MutationTypeModified,
 			Details: db.EntryMutations{
 				{
 					Version: db.VersionNew,
