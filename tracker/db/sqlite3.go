@@ -294,9 +294,18 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 
 		newEntryKey := fmt.Sprintf("%s%s%d", fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
 		if newEntryKey != previousEntryKey {
+			if err = sanitiseFSMDetails(fsm); err != nil {
+				return nil, errors.WithMessagef(err, "FSType: '%s' DeviceID: '%s' EntryID: '%d'", fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
+			}
+
 			fsMutations = append(fsMutations, fsm)
 			fsm = FSMutation{
 				Type: *mType,
+			}
+		} else {
+			// by inference, at this point we are looking at the 2nd or greater element of fsm.Details
+			if *mType != fsm.Type {
+				return nil, errors.Errorf("both mutation details are for different types of mutation '%s' vs '%s' - FSType: '%s' DeviceID: '%s' EntryID: '%d'", *mType, fsm.Type, fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
 			}
 		}
 
@@ -305,7 +314,6 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 			FSEntry: *fsEntry,
 		}
 
-		// TODO: check mType is the same for all entries in FSMutation.Mutation?
 		fsm.Details = append(fsm.Details, ve) // TODO: check that a duplicate value is not already present?
 		previousEntryKey = newEntryKey
 	}
@@ -318,6 +326,27 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 	fsMutations = append(fsMutations, fsm)
 
 	return fsMutations[1:], nil
+}
+
+func sanitiseFSMDetails(fsm FSMutation) error {
+	switch fsm.Type {
+	case MutationTypeCreated, MutationTypeDeleted:
+		if len(fsm.Details) != 1 {
+			return errors.Errorf("mutation with more than the expected single state in Details")
+		}
+	case MutationTypeModified, MutationTypeMoved:
+		if len(fsm.Details) != 2 {
+			return errors.Errorf("mutation with more than the expected two states in Details")
+		}
+		if fsm.Details[0].Version == fsm.Details[1].Version {
+			return errors.Errorf("both mutation details are unexpectedly for version '%s'", fsm.Details[0].Version)
+		}
+		if fsm.Details[0].Version == VersionNew {
+			fsm.Details[0].Version, fsm.Details[1].Version = fsm.Details[1].Version, fsm.Details[0].Version
+		}
+	}
+
+	return nil
 }
 
 func getMutationDetails(rows *sql.Rows) (*MutationType, *Version, *FSEntry, error) {
