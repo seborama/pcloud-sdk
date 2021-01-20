@@ -6,8 +6,7 @@ package migrations
 //       there could be 2 local replicas with the same device ID (they would differ by root
 //       path)
 var SQLite3 = []string{
-	`
-		BEGIN;
+	`	BEGIN;
 
 		CREATE TABLE IF NOT EXISTS "sync" (
 			"type"       VARCHAR,

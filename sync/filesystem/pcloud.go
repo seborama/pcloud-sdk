@@ -74,7 +74,7 @@ func (fs *PCloud) StreamFileData(ctx context.Context, fsEntry db.FSEntry) (<-cha
 
 // MkDir creates a directory.
 func (fs *PCloud) MkDir(ctx context.Context, path string) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented")
 }
 
 // MkFile creates a file with the contents streamed through dataCh.
@@ -105,20 +105,20 @@ func (fs *PCloud) MkFile(ctx context.Context, path string, dataCh <-chan []byte)
 
 // RmDir removes a directory.
 func (fs *PCloud) RmDir(ctx context.Context, path string) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented")
 }
 
 // RmFile removes a file.
 func (fs *PCloud) RmFile(ctx context.Context, path string) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented")
 }
 
 // MvDir moves a directory.
 func (fs *PCloud) MvDir(ctx context.Context, fromPath string, toPath string) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented")
 }
 
 // MvFile moves a file.
 func (fs *PCloud) MvFile(ctx context.Context, fromPath string, toPath string) error {
-	panic("not implemented") // TODO: Implement
+	panic("not implemented")
 }

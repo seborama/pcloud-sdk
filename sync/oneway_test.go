@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRightSync_Created(t *testing.T) {
+func TestOneWay_Sync_Created(t *testing.T) {
 	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
@@ -152,7 +152,7 @@ func TestRightSync_Created(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRightSync_Deleted(t *testing.T) {
+func TestOneWay_Sync_Deleted(t *testing.T) {
 	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
@@ -250,7 +250,7 @@ func TestRightSync_Deleted(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRightSync_Modified(t *testing.T) {
+func TestOneWay_Sync_Modified(t *testing.T) {
 	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
@@ -341,7 +341,7 @@ func TestRightSync_Modified(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRightSync_Moved(t *testing.T) {
+func TestOneWay_Sync_Moved(t *testing.T) {
 	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
@@ -487,7 +487,7 @@ func TestRightSync_Moved(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRightSync_MutatedAndMoved(t *testing.T) {
+func TestOneWay_Sync_MutatedAndMoved(t *testing.T) {
 	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 }
 

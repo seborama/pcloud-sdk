@@ -83,7 +83,7 @@ func (c *Client) Login(ctx context.Context, otpCodeOpt string, opts ...ClientOpt
 	q.Add("getauth", "1")
 	q.Add("logout", "1")
 	q.Add("os", osID())
-	q.Add("device", deviceID()) // TODO: is this needed?
+	q.Add("device", deviceID()) // NOTE: is this needed?
 	q.Add("deviceid", deviceID())
 
 	ui := &UserInfo{}
@@ -91,7 +91,7 @@ func (c *Client) Login(ctx context.Context, otpCodeOpt string, opts ...ClientOpt
 	err := parseAPIOutput(ui)(c.get(ctx, "login", q))
 	if err != nil {
 		if ui.Result != ErrTFARequired {
-			// TODO: there may be other flows in the login procedure for consideration, such as:
+			// NOTE: there may be other flows in the login procedure for consideration, such as:
 			//       - 2064: expired token
 			//       - 2012: invalid code (probably equivalent to bad login: return error)
 			//       - 2205 / 2229: something about "auth expired" needs auth reset (?)
@@ -116,7 +116,7 @@ func (c *Client) loginTFA(ctx context.Context, token, otpCode string, opts ...Cl
 	q.Add("getauth", "1")
 	q.Add("logout", "1")
 	q.Add("os", osID())
-	q.Add("device", deviceID()) // TODO: is this needed?
+	q.Add("device", deviceID()) // NOTE: is this needed?
 	q.Add("deviceid", deviceID())
 	q.Add("token", token)     // TFA challenge
 	q.Add("code", otpCode)    // TFA response

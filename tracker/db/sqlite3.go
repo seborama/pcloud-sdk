@@ -314,7 +314,7 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 			FSEntry: *fsEntry,
 		}
 
-		fsm.Details = append(fsm.Details, ve) // TODO: check that a duplicate value is not already present?
+		fsm.Details = append(fsm.Details, ve)
 		previousEntryKey = newEntryKey
 	}
 
@@ -798,7 +798,7 @@ func (s *SQLite3) MarkSyncInProgress(ctx context.Context, fsType FSType) error {
 
 // MarkSyncComplete marks the status of the sync as "complete".
 // TODO: it may be that the staging table should be cleared down, although not essential because
-// that is properly taken care of by other method that change the state of table "filesystem".
+// that is properly taken care of by other methods that change the state of table "filesystem".
 func (s *SQLite3) MarkSyncComplete(ctx context.Context, fsType FSType) error {
 	_, err := s.db.ExecContext(
 		ctx,
