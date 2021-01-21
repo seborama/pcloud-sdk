@@ -150,7 +150,7 @@ func (s *OneWay) update(ctx context.Context, entryMutations db.EntryMutations) e
 		return errors.Errorf("expected 2 entries in mutation details but got '%d'", len(entryMutations))
 	}
 
-	fsEntry := entryMutations[1].FSEntry
+	fsEntry := entryMutations[0].FSEntry
 
 	if fsEntry.IsFolder {
 		return errors.Errorf("received update for a folder: folderID='%d' path='%s' name='%s'", fsEntry.EntryID, fsEntry.Path, fsEntry.Name)
