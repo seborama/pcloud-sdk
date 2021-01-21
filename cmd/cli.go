@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"net/http"
-	pcli "seborama/pcloud/cli"
-	"seborama/pcloud/sdk"
 	"time"
 
 	ucli "github.com/urfave/cli/v2"
+
+	pcli "github.com/seborama/pcloud/cli"
+	"github.com/seborama/pcloud/sdk"
 )
 
 func pCLI(c *ucli.Context) error {

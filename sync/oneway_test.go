@@ -5,16 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"seborama/pcloud/sync"
-	"seborama/pcloud/tracker/db"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/seborama/pcloud/sync"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func TestOneWay_Sync_Created(t *testing.T) {
-	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
 	expectedFSMutations := db.FSMutations{
@@ -153,7 +152,6 @@ func TestOneWay_Sync_Created(t *testing.T) {
 }
 
 func TestOneWay_Sync_Deleted(t *testing.T) {
-	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
 	expectedFSMutations := db.FSMutations{
@@ -251,7 +249,6 @@ func TestOneWay_Sync_Deleted(t *testing.T) {
 }
 
 func TestOneWay_Sync_Modified(t *testing.T) {
-	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
 	expectedFSMutations := db.FSMutations{
@@ -358,7 +355,6 @@ func TestOneWay_Sync_Modified(t *testing.T) {
 }
 
 func TestOneWay_Sync_Moved(t *testing.T) {
-	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
 	ctx := context.Background()
 
 	expectedFSMutations := db.FSMutations{
@@ -504,7 +500,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 }
 
 func TestOneWay_Sync_MutatedAndMoved(t *testing.T) {
-	// TODO("MUST PROVE THAT LEFT SYNC OPS ARE NOT EXECUTED")
+	t.Skip("NOT YET WRITTEN")
 }
 
 type MockPCloudFileSystem struct {

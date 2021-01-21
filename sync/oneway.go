@@ -2,28 +2,24 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker/db"
-
 	"github.com/pkg/errors"
+
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 type tracker interface {
 	ListMutations(ctx context.Context) (db.FSMutations, error)
 }
 
-type sdkClient interface {
-	FileOpen(ctx context.Context, flags uint64, file sdk.T4PathOrFileIDOrFolderIDName, opts ...sdk.ClientOption) (*sdk.File, error)
-	FileClose(ctx context.Context, fd uint64, opts ...sdk.ClientOption) error
-	FileRead(ctx context.Context, fd, count uint64, opts ...sdk.ClientOption) ([]byte, error)
-}
-
+// FSReader represents the behaviour of a file system reader.
 type FSReader interface {
 	StreamFileData(ctx context.Context, fsEntry db.FSEntry) (<-chan []byte, <-chan error)
 }
 
+// FSWriter represents the behaviour of a file system writer.
 type FSWriter interface {
 	MkDir(ctx context.Context, path string) error
 	MkFile(ctx context.Context, path string, dataCh <-chan []byte) error
@@ -33,12 +29,15 @@ type FSWriter interface {
 	MvFile(ctx context.Context, fromPath, toPath string) error
 }
 
+// OneWay holds the from and to file systems and the mutation tracker needed to perform a
+// one-way sync.
 type OneWay struct {
 	from    FSReader
 	to      FSWriter
 	tracker tracker
 }
 
+// NewOneWay creates a new initialised OneWay struct.
 func NewOneWay(from FSReader, to FSWriter, fsTracker tracker) *OneWay {
 	return &OneWay{
 		from:    from,
@@ -47,6 +46,8 @@ func NewOneWay(from FSReader, to FSWriter, fsTracker tracker) *OneWay {
 	}
 }
 
+// Sync performs the synchronisation of changes in the source file system to the destination
+// file system.
 func (s *OneWay) Sync(ctx context.Context) error {
 	// TODO: after the one-way sync has completed, delete extraneous entries that exist on the right
 	//       ie files and folder that were created externally on the "to" side, not by the sync.
@@ -58,19 +59,23 @@ func (s *OneWay) Sync(ctx context.Context) error {
 	for _, m := range mutations {
 		switch m.Type {
 		case db.MutationTypeCreated:
-			s.create(ctx, m.Details)
+			err = s.create(ctx, m.Details)
 
 		case db.MutationTypeDeleted:
-			s.delete(ctx, m.Details)
+			err = s.delete(ctx, m.Details)
 
 		case db.MutationTypeModified:
-			s.update(ctx, m.Details)
+			err = s.update(ctx, m.Details)
 
 		case db.MutationTypeMoved:
-			s.move(ctx, m.Details)
+			err = s.move(ctx, m.Details)
 
 		default:
 			return errors.Errorf("unknown mutation type '%s'", string(m.Type))
+		}
+
+		if err != nil {
+			fmt.Printf("error with mutation type '%s': %+v", string(m.Type), err)
 		}
 	}
 

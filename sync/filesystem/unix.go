@@ -6,9 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"seborama/pcloud/tracker/db"
 
 	"github.com/pkg/errors"
+
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 // fsOperations wraps basic OS implemented operations on a file system.
@@ -32,8 +33,7 @@ func NewUnix(fsOps fsOperations) *Unix {
 
 // StreamFileData reads the contents of the file pointed to by fsEntry and streams it to the
 // channel the method returns.
-// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar
-//       Go feel.
+// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar Go feel.
 func (fs *Unix) StreamFileData(ctx context.Context, fsEntry db.FSEntry) (<-chan []byte, <-chan error) {
 	dataCh := make(chan []byte, 100)
 	errCh := make(chan error)
@@ -81,8 +81,7 @@ func (fs *Unix) MkDir(ctx context.Context, path string) error {
 }
 
 // MkFile creates a file with the contents streamed through dataCh.
-// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar
-//       Go feel.
+// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar Go feel.
 func (fs *Unix) MkFile(ctx context.Context, path string, dataCh <-chan []byte) (err error) {
 	f, err := fs.fsOps.OpenFile(path, os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
@@ -133,6 +132,7 @@ type GoFSOperations struct{}
 
 // Open is glue code for os.Open.
 func (fso *GoFSOperations) Open(name string) (*os.File, error) {
+	// nolint: gosec
 	return os.Open(name)
 }
 
@@ -143,5 +143,6 @@ func (fso *GoFSOperations) MkdirAll(path string, perm os.FileMode) error {
 
 // OpenFile is glue code for os.OpenFile.
 func (fso *GoFSOperations) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+	// nolint: gosec
 	return os.OpenFile(name, flag, perm)
 }

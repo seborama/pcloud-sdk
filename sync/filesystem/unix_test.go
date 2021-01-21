@@ -4,14 +4,15 @@ import (
 	"context"
 	"io"
 	"os"
-	"seborama/pcloud/sync/filesystem"
-	"seborama/pcloud/tracker/db"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/seborama/pcloud/sync/filesystem"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func TestUnix_StreamFileData_MkFile(t *testing.T) {
@@ -103,7 +104,7 @@ type mockReadCloser struct {
 
 func (m *mockReadCloser) Read(p []byte) (n int, err error) {
 	args := m.Called(p)
-	copy(p, []byte("Hello"))
+	copy(p, "Hello")
 	return args.Int(0), args.Error(1)
 }
 

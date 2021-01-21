@@ -3,10 +3,11 @@ package filesystem
 import (
 	"context"
 	"io"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker/db"
 
 	"github.com/pkg/errors"
+
+	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 // pCloudSDK defines the SDK methods used to perform operations on the PCloud file system.
@@ -31,8 +32,7 @@ func NewPCloud(sdk pCloudSDK) *PCloud {
 
 // StreamFileData reads the contents of the file pointed to by fsEntry and streams it to the
 // channel the method returns.
-// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar
-//       Go feel.
+// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar Go feel.
 func (fs *PCloud) StreamFileData(ctx context.Context, fsEntry db.FSEntry) (<-chan []byte, <-chan error) {
 	dataCh := make(chan []byte, 100)
 	errCh := make(chan error)
@@ -78,8 +78,7 @@ func (fs *PCloud) MkDir(ctx context.Context, path string) error {
 }
 
 // MkFile creates a file with the contents streamed through dataCh.
-// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar
-//       Go feel.
+// TODO: wrap the dataCh into a io.ReadWriter so to keep the code simple and offer a familiar Go feel.
 func (fs *PCloud) MkFile(ctx context.Context, path string, dataCh <-chan []byte) (err error) {
 	f, err := fs.sdk.FileOpen(ctx, sdk.O_CREAT|sdk.O_TRUNC, sdk.T4FileByPath(path))
 	if err != nil {

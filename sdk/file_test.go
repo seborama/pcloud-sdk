@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"seborama/pcloud/sdk"
+
+	"github.com/seborama/pcloud/sdk"
 )
 
 func (testsuite *IntegrationTestSuite) Test_UploadFile() {

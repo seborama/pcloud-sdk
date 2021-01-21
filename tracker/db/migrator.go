@@ -8,13 +8,15 @@ import (
 	// sqllite3 sql driver.
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"seborama/pcloud/tracker/db/migrations"
+
+	"github.com/seborama/pcloud/tracker/db/migrations"
 )
 
 type Migrator struct {
 	db *sql.DB
 }
 
+// NewMigrator creates a new initialised Migrator struct.
 func NewMigrator(db *sql.DB) *Migrator {
 	return &Migrator{
 		db: db,

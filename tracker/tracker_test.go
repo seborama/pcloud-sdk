@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker"
-	"seborama/pcloud/tracker/db"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud/tracker"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 type IntegrationTestSuite struct {
@@ -124,7 +124,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	err := testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
-	// nolint: dupl
 	expected := db.FSMutations{
 		{
 			Type: db.MutationTypeCreated,
@@ -252,7 +251,6 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	err = testsuite.store.MarkSyncRequired(testsuite.ctx, db.PCloudFileSystem)
 	testsuite.Require().NoError(err)
 
-	// nolint: dupl
 	expected := db.FSMutations{
 		{
 			Type: db.MutationTypeDeleted,

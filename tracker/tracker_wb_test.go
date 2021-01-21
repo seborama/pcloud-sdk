@@ -11,7 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"seborama/pcloud/tracker/db"
+
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func TestHashFileData(t *testing.T) {
@@ -99,7 +100,7 @@ func TestMarkNewFileSystemEntriesAsPrevious(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Skip("Will need to add a test for In progress > AsRequired failure")
-	//err = tr.markSyncAsInProgress(ctx, db.LocalFileSystem)
+	// err = tr.markSyncAsInProgress(ctx, db.LocalFileSystem)
 	err = tr.markNewFileSystemEntriesAsPrevious(ctx, db.LocalFileSystem)
 	require.EqualError(t, err, "markNewFileSystemEntriesAsPrevious requires sync status 'Complete' but status is currently 'Required'")
 }

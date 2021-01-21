@@ -4,15 +4,16 @@ import (
 	"context"
 	"io"
 	"net/url"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/sync/filesystem"
-	"seborama/pcloud/tracker/db"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud/sync/filesystem"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func TestPCloud_StreamFileData_MkFile(t *testing.T) {

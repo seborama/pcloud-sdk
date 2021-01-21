@@ -28,7 +28,7 @@ const (
 	// function will fail if the file does not exist.
 	O_CREAT = 0x0040
 
-	// O_EXCL when used with O_CREAT, file must not exist
+	// O_EXCL when used with O_CREAT, file must not exist.
 	O_EXCL = 0x0080
 
 	// O_TRUNC will truncate files when opening existing files.

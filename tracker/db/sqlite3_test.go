@@ -7,7 +7,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/require"
-	"seborama/pcloud/tracker/db"
+
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func TestSQLite3_MigrationsSuccess(t *testing.T) {

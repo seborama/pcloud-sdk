@@ -152,9 +152,8 @@ func (c *Client) GetFileHistory(ctx context.Context, fileID uint64, opts ...Clie
 // comprehensive list of compacting activities, so you should generally re-download from zero
 // rather than trying to cope with compacting.
 // https://docs.pcloud.com/methods/general/diff.html
-// //////////////////////////////
+//
 // TODO: add support for shares.
-// //////////////////////////////
 func (c *Client) Diff(ctx context.Context, diffID uint64, after time.Time, last uint64, block bool, limit uint64, opts ...ClientOption) (*DiffResult, error) {
 	q := toQuery(opts...)
 

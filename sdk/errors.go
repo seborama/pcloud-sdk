@@ -64,7 +64,7 @@ const (
 	// ErrInvalidFileID is returned when invalid 'fileid' provided.
 	ErrInvalidFileID = 1018
 
-	// ErrChecksumNotProvided is returned when please provide 'sha1' or 'md5' checksum
+	// ErrChecksumNotProvided is returned when please provide 'sha1' or 'md5' checksum.
 	ErrChecksumNotProvided = 1019
 
 	// ErrLanguageNotProvided is returned when please provide language.
@@ -136,7 +136,7 @@ const (
 	// ErrReasonNotProvided is returned when please provide 'reason'.
 	ErrReasonNotProvided = 1042
 
-	// ErrUploadNotFound is returned when upload not found
+	// ErrUploadNotFound is returned when upload not found.
 	ErrUploadNotFound = 1900
 
 	// ErrLoginFailed is returned when log in failed.

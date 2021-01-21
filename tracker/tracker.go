@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker/archos"
-	"seborama/pcloud/tracker/db"
+
+	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud/tracker/archos"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 type sdkClient interface {
@@ -286,6 +287,7 @@ func (t *Tracker) markNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 		return errors.WithMessage(err, "database error or sync has not been initialised")
 	}
 
+	// nolint: exhaustive
 	switch status {
 	case db.SyncStatusRequired:
 		// TODO: add a test for this scenario

@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"seborama/pcloud/sdk"
-	"seborama/pcloud/tracker"
-	"seborama/pcloud/tracker/db"
 	"time"
 
 	"github.com/urfave/cli/v2"
+
+	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud/tracker"
+	"github.com/seborama/pcloud/tracker/db"
 )
 
 func analyse(c *cli.Context) error {
@@ -66,10 +67,12 @@ func analyse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	s := 1024
 	if len(j) < 1024 {
 		s = len(j)
 	}
+
 	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
 	fmt.Println("ListLatestLocalContents...")
@@ -88,10 +91,12 @@ func analyse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	s = 1024
 	if len(j) < 1024 {
 		s = len(j)
 	}
+
 	fmt.Printf("PCloud vs Local mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
 	return nil

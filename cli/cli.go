@@ -6,10 +6,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"seborama/pcloud/sdk"
 	"strings"
 
 	"github.com/pkg/errors"
+
+	"github.com/seborama/pcloud/sdk"
 )
 
 const PCloudPrefix = "r:"
@@ -23,6 +24,7 @@ type CLI struct {
 	httpClient   *http.Client
 }
 
+// NewCLI creates a new initialised CLI struct.
 func NewCLI(pCloudClient sdkClient, httpClient *http.Client) *CLI {
 	return &CLI{
 		pCloudClient: pCloudClient,

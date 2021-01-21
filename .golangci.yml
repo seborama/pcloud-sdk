@@ -118,7 +118,7 @@ linters-settings:
     # put imports beginning with prefix after 3rd-party packages;
     # only support one prefix
     # if not set, use goimports.local-prefixes
-    local-prefixes: github.com/org/project
+    local-prefixes: github.com/seborama/pcloud
   gocognit:
     # minimal code complexity to report, 30 by default (but we recommend 10-20)
     min-complexity: 10
@@ -329,7 +329,7 @@ linters-settings:
     # Exclude following linters from requiring an explanation.  Default is [].
     allow-no-explanation: []
     # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
-    require-explanation: true
+    require-explanation: false
     # Enable to require nolint directives to mention the specific linter being suppressed. Default is false.
     require-specific: true
   rowserrcheck:
@@ -414,12 +414,27 @@ linters-settings:
 
 linters:
   enable:
-    - megacheck
+    - depguard
+    - errcheck
+    - gci
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - golint
+    - gomodguard
     - govet
+    - nestif
+    - megacheck
+    - nolintlint
   disable:
     - maligned
     - prealloc
+    - wrapcheck
   disable-all: false
+  # enable-all: true
   presets:
     - bugs
     - unused
@@ -439,10 +454,13 @@ issues:
     # Exclude some linters from running on tests files.
     - path: _test\.go
       linters:
-        - gocyclo
-        - errcheck
         - dupl
+        - errcheck
+        - gocyclo
+        - godot
         - gosec
+        - nlreturn
+        - wsl
 
     # Exclude known linters from partially hard-vendored code,
     # which is impossible to exclude via "nolint" comments.

@@ -1,4 +1,4 @@
-module seborama/pcloud
+module github.com/seborama/pcloud
 
 go 1.15
 

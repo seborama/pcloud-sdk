@@ -251,6 +251,7 @@ const (
 // GetPCloudVsLocalMutations returns a slice of mutations that exist between the pCloud file system
 // and the local file system.
 func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, error) {
+	// nolint: rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT scm.mutation_type,
@@ -390,6 +391,7 @@ func (s *SQLite3) GetLocalMutations(ctx context.Context) (FSMutations, error) {
 }
 
 func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FSMutations, error) {
+	// nolint: rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT scm.mutation_type,
@@ -629,12 +631,7 @@ func (s *SQLite3) DeleteVersionNew(ctx context.Context, fsType FSType) error {
 }
 
 func (s *SQLite3) deleteVersionPrevious(ctx context.Context, tx *sql.Tx, fsType FSType) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
-	err = s.deleteVersion(ctx, tx, fsType, VersionPrevious)
+	err := s.deleteVersion(ctx, tx, fsType, VersionPrevious)
 	if err != nil {
 		return doRollback(tx, err)
 	}
@@ -642,11 +639,6 @@ func (s *SQLite3) deleteVersionPrevious(ctx context.Context, tx *sql.Tx, fsType 
 	err = s.deleteFSMutations(ctx, tx, fsType)
 	if err != nil {
 		return errors.WithStack(err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return doRollback(tx, err)
 	}
 
 	return nil

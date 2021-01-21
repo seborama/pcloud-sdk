@@ -4,7 +4,7 @@ package migrations
 // TODO: missing a concept of replica_id which would uniquely identify a cloud or a local
 //       replica beyond the current type + device_id which is not sufficient. For instance,
 //       there could be 2 local replicas with the same device ID (they would differ by root
-//       path)
+//       path).
 var SQLite3 = []string{
 	`	BEGIN;
 
