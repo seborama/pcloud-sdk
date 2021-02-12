@@ -18,6 +18,13 @@ type SQLite3 struct {
 	db             *sql.DB
 }
 
+type FSDriver string
+
+const (
+	FSDriverPCloud FSDriver = "pCloud"
+	FSDriverLocal  FSDriver = "Local"
+)
+
 // NewSQLite3 creates a new initialised SQLite3.
 func NewSQLite3(ctx context.Context, dbPath string) (*SQLite3, error) {
 	dbPathFilename := filepath.Join(dbPath, "tracker.db")
@@ -50,7 +57,7 @@ const (
 
 // FSEntry is a set of details about an entry (folder or file) in the file system.
 type FSEntry struct {
-	FSType         FSType
+	FSName         FSName
 	DeviceID       string // for cloud, this could be used to distinguish multiple accounts on the same cloud provider
 	EntryID        uint64
 	IsFolder       bool
@@ -76,6 +83,21 @@ func WithEntriesChannelSize(n int) Options {
 	return func(obj *config) {
 		obj.entriesChSize = n
 	}
+}
+
+// GetSyncDetails returns the driver for the specified file system name and the root path.
+func (s *SQLite3) GetSyncDetails(ctx context.Context, fsName FSName) (FSDriver, string, error) {
+	var fsDriver FSDriver
+	fsRoot := ""
+
+	err := s.db.QueryRowContext(
+		ctx,
+		`SELECT fs_driver, fs_root FROM "sync" WHERE "fs_name" = ?`,
+		fsName,
+		fsRoot,
+	).Scan(&fsDriver, &fsRoot)
+
+	return fsDriver, fsRoot, errors.WithStack(err)
 }
 
 // AddNewFileSystemEntries adds a new file system entry.
@@ -109,7 +131,7 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, opts ...Options) 
 				`INSERT INTO "filesystem"
 			(type, version, device_id, entry_id, is_folder, path, name, parent_folder_id, created, modified, size, hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				entry.FSType,
+				entry.FSName,
 				VersionNew,
 				entry.DeviceID,
 				fmt.Sprintf("%d", entry.EntryID),
@@ -140,12 +162,12 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, opts ...Options) 
 	return entriesCh, errCh
 }
 
-// Close close the connection to sqlite3.
+// Close closes the connection to sqlite3.
 func (s *SQLite3) Close() error {
 	return s.db.Close()
 }
 
-func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, version Version) ([]FSEntry, error) {
+func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsName FSName, version Version) ([]FSEntry, error) {
 	// nolint: rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
@@ -164,7 +186,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 		 FROM "filesystem"
 		 WHERE type = ?
 		   AND version = ?`,
-		fsType,
+		fsName,
 		version,
 	)
 	if err != nil {
@@ -177,7 +199,7 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 	for rows.Next() {
 		entry := FSEntry{}
 		err = rows.Scan(
-			&entry.FSType,
+			&entry.FSName,
 			&entry.DeviceID,
 			&entry.EntryID,
 			&entry.IsFolder,
@@ -205,14 +227,14 @@ func (s *SQLite3) getFileSystemEntries(ctx context.Context, fsType FSType, versi
 
 // GetPreviousFileSystemEntries get the previous (i.e. version "Previous") file system entries
 // for the specified file system type.
-func (s *SQLite3) GetPreviousFileSystemEntries(ctx context.Context, fsType FSType) ([]FSEntry, error) {
-	return s.getFileSystemEntries(ctx, fsType, VersionPrevious)
+func (s *SQLite3) GetPreviousFileSystemEntries(ctx context.Context, fsName FSName) ([]FSEntry, error) {
+	return s.getFileSystemEntries(ctx, fsName, VersionPrevious)
 }
 
 // GetLatestFileSystemEntries get the latest (i.e. version "New") file system entries for the
 // specified file system type.
-func (s *SQLite3) GetLatestFileSystemEntries(ctx context.Context, fsType FSType) ([]FSEntry, error) {
-	return s.getFileSystemEntries(ctx, fsType, VersionNew)
+func (s *SQLite3) GetLatestFileSystemEntries(ctx context.Context, fsName FSName) ([]FSEntry, error) {
+	return s.getFileSystemEntries(ctx, fsName, VersionNew)
 }
 
 // FSMutation contains a file system mutation: type and details.
@@ -269,7 +291,7 @@ func (s *SQLite3) GetPCloudVsLocalMutations(ctx context.Context) (FSMutations, e
 			    fs.hash
 		 FROM staging_cross_mutations scm
 			  LEFT OUTER JOIN filesystem fs
-			  ON scm.fs_type = fs.type
+			  ON scm.fs_name = fs.type
 			     AND scm.device_id = fs.device_id
 				 AND scm.entry_id = fs.entry_id
 		 ORDER BY scm.mutation_type, fs.entry_id, fs.version DESC`, // `fs.version DESC`: `Previous` before `New`
@@ -293,10 +315,10 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 			return nil, errors.WithStack(err)
 		}
 
-		newEntryKey := fmt.Sprintf("%s%s%d", fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
+		newEntryKey := fmt.Sprintf("%s%s%d", fsEntry.FSName, fsEntry.DeviceID, fsEntry.EntryID)
 		if newEntryKey != previousEntryKey {
 			if err = sanitiseFSMDetails(fsm); err != nil {
-				return nil, errors.WithMessagef(err, "FSType: '%s' DeviceID: '%s' EntryID: '%d'", fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
+				return nil, errors.WithMessagef(err, "FSName: '%s' DeviceID: '%s' EntryID: '%d'", fsEntry.FSName, fsEntry.DeviceID, fsEntry.EntryID)
 			}
 
 			fsMutations = append(fsMutations, fsm)
@@ -306,7 +328,7 @@ func processFSMutationsRows(rows *sql.Rows) (FSMutations, error) {
 		} else {
 			// by inference, at this point we are looking at the 2nd or greater element of fsm.Details
 			if *mType != fsm.Type {
-				return nil, errors.Errorf("both mutation details are for different types of mutation '%s' vs '%s' - FSType: '%s' DeviceID: '%s' EntryID: '%d'", *mType, fsm.Type, fsEntry.FSType, fsEntry.DeviceID, fsEntry.EntryID)
+				return nil, errors.Errorf("both mutation details are for different types of mutation '%s' vs '%s' - FSName: '%s' DeviceID: '%s' EntryID: '%d'", *mType, fsm.Type, fsEntry.FSName, fsEntry.DeviceID, fsEntry.EntryID)
 			}
 		}
 
@@ -359,7 +381,7 @@ func getMutationDetails(rows *sql.Rows) (*MutationType, *Version, *FSEntry, erro
 
 	err := rows.Scan(
 		&mType,
-		&fsEntry.FSType,
+		&fsEntry.FSName,
 		&version,
 		&fsEntry.DeviceID,
 		&fsEntry.EntryID,
@@ -379,23 +401,14 @@ func getMutationDetails(rows *sql.Rows) (*MutationType, *Version, *FSEntry, erro
 	return &mType, &version, &fsEntry, nil
 }
 
-// GetPCloudMutations returns a slice of mutations on the pCloud file system.
+// GetFileSystemMutations returns a slice of mutations for the specified file system.
 // It should be noted that up to two rows may be created: one for each version: previous and new.
-func (s *SQLite3) GetPCloudMutations(ctx context.Context) (FSMutations, error) {
-	return s.getFileSystemMutations(ctx, PCloudFileSystem)
-}
-
-// GetLocalMutations returns a slice of mutations on the local file system.
-func (s *SQLite3) GetLocalMutations(ctx context.Context) (FSMutations, error) {
-	return s.getFileSystemMutations(ctx, LocalFileSystem)
-}
-
-func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FSMutations, error) {
+func (s *SQLite3) GetFileSystemMutations(ctx context.Context, fsName FSName) (FSMutations, error) {
 	// nolint: rowserrcheck
 	rows, err := s.db.QueryContext(
 		ctx,
 		`SELECT scm.mutation_type,
-			    fs.type,
+			    fs.fs_name,
 			    fs.version,
 			    fs.device_id,
 			    fs.entry_id,
@@ -409,12 +422,12 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 			    fs.hash
 		 FROM staging_fs_mutations scm
 			  LEFT OUTER JOIN filesystem fs
-			  ON scm.fs_type = fs.type
+			  ON scm.fs_name = fs.fs_name
 			  	 AND scm.device_id = fs.device_id
 			  	 AND scm.entry_id = fs.entry_id
-		 WHERE scm.fs_type = :fstype
+		 WHERE scm.fs_name = :fs_name
 		 ORDER BY scm.mutation_type, fs.entry_id, fs.version DESC`, // `fs.version DESC`: `Previous` before `New`
-		sql.Named("fstype", fsType),
+		sql.Named("fs_name", fsName),
 	)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -424,92 +437,162 @@ func (s *SQLite3) getFileSystemMutations(ctx context.Context, fsType FSType) (FS
 	return processFSMutationsRows(rows)
 }
 
-// TODO: for this to work reliably, path needs to be standardised (i.e. \ or /, C: or /, etc).
-func (s *SQLite3) refreshCrossFSMutationsStagingTable(ctx context.Context, left, right FSType) error {
-	_, err := s.db.ExecContext(
+type SyncPair struct {
+	pairName PairName
+	fromFS   FSName
+	toFS     FSName
+}
+
+type PairName string
+
+func (s *SQLite3) findSyncPair(ctx context.Context, pairName PairName) (*SyncPair, error) {
+	var syncPair SyncPair
+
+	err := s.db.
+		QueryRowContext(
+			ctx,
+			`SELECT pair_name, from_fs, to_fs
+			 FROM sync_pairs
+			 WHERE pair_name == :pair_name`,
+			sql.Named("pair_name", pairName)).
+		Scan(&syncPair.pairName, &syncPair.fromFS, &syncPair.toFS)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return &syncPair, nil
+}
+
+func (s *SQLite3) findSyncPairsByFSName(ctx context.Context, fsName FSName) ([]SyncPair, error) {
+	rows, err := s.db.QueryContext(
 		ctx,
-		`WITH left_fs AS (SELECT type, device_id, entry_id, path, name, parent_folder_id, hash
+		`SELECT pair_name, from_fs, to_fs
+		 FROM sync_pairs
+		 WHERE from_fs == :fs_name OR to_fs == :fs_name`,
+		sql.Named("fs_name", fsName),
+	)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	syncPairs := []SyncPair{}
+
+	for rows.Next() {
+		sp := SyncPair{}
+
+		err := rows.Scan(
+			&sp.fromFS,
+			&sp.toFS,
+		)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		syncPairs = append(syncPairs, sp)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return syncPairs, nil
+}
+
+// TODO: for this to work reliably, path needs to be standardised (i.e. \ or /, C: or /, etc).
+func (s *SQLite3) refreshCrossFSMutationsStagingTable(ctx context.Context, fsName FSName) error {
+	syncPairs, err := s.findSyncPairsByFSName(ctx, fsName)
+	if err != nil {
+		return err
+	}
+
+	for _, pair := range syncPairs {
+		_, err = s.db.ExecContext(
+			ctx,
+			`WITH from_fs AS (SELECT type, device_id, entry_id, path, name, parent_folder_id, hash
 			                FROM filesystem
 						   WHERE version = :version_new
-					         AND type = :left_fs),
-			 right_fs AS (SELECT type, device_id, entry_id, path, name, parent_folder_id, hash
+					         AND type = :from_fs),
+			 to_fs AS (SELECT type, device_id, entry_id, path, name, parent_folder_id, hash
 				            FROM filesystem
 						   WHERE version = :version_new
-						     AND type = :right_fs)
+						     AND type = :to_fs)
 
 		INSERT INTO staging_cross_mutations
 
 		SELECT
 			:mutation_type_deleted,
-			left_fs.type,
-			left_fs.device_id,
-			left_fs.entry_id
-		 FROM left_fs LEFT OUTER JOIN right_fs USING (path, name)
-		 WHERE right_fs.entry_id IS NULL
+			from_fs.type,
+			from_fs.device_id,
+			from_fs.entry_id
+		 FROM from_fs LEFT OUTER JOIN to_fs USING (path, name)
+		 WHERE to_fs.entry_id IS NULL
 
 		 UNION
 
 		 SELECT
 			:mutation_type_created,
-			right_fs.type,
-			right_fs.device_id,
-			right_fs.entry_id
-		 FROM right_fs LEFT OUTER JOIN left_fs USING (path, name)
-		 WHERE left_fs.entry_id IS NULL
+			to_fs.type,
+			to_fs.device_id,
+			to_fs.entry_id
+		 FROM to_fs LEFT OUTER JOIN from_fs USING (path, name)
+		 WHERE from_fs.entry_id IS NULL
 
 		 UNION
 
 		 SELECT
 			:mutation_type_modified,
-			right_fs.type,
-			right_fs.device_id,
-			right_fs.entry_id
-		 FROM left_fs JOIN right_fs USING (path, name)
-		 WHERE left_fs.parent_folder_id = right_fs.parent_folder_id
+			to_fs.type,
+			to_fs.device_id,
+			to_fs.entry_id
+		 FROM from_fs JOIN to_fs USING (path, name)
+		 WHERE from_fs.parent_folder_id = to_fs.parent_folder_id
 		   AND (
 		       -- hash is not relevant for folders and that's just fine
-		       left_fs.hash != right_fs.hash
+		       from_fs.hash != to_fs.hash
 		   )
 
 		 UNION
 
 		 SELECT
 			:mutation_type_moved,
-			right_fs.type,
-			right_fs.device_id,
-			right_fs.entry_id
-		  FROM left_fs JOIN right_fs USING (path, name)
+			to_fs.type,
+			to_fs.device_id,
+			to_fs.entry_id
+		  FROM from_fs JOIN to_fs USING (path, name)
 		 -- it should be noted that a file may both move and change
-		 WHERE left_fs.parent_folder_id != right_fs.parent_folder_id`,
-		sql.Named("left_fs", left),
-		sql.Named("right_fs", right),
-		sql.Named("version_new", VersionNew),
-		sql.Named("mutation_type_deleted", MutationTypeDeleted),
-		sql.Named("mutation_type_created", MutationTypeCreated),
-		sql.Named("mutation_type_modified", MutationTypeModified),
-		sql.Named("mutation_type_moved", MutationTypeMoved),
-	)
+		 WHERE from_fs.parent_folder_id != to_fs.parent_folder_id`,
+			sql.Named("from_fs", pair.fromFS),
+			sql.Named("to_fs", pair.toFS),
+			sql.Named("version_new", VersionNew),
+			sql.Named("mutation_type_deleted", MutationTypeDeleted),
+			sql.Named("mutation_type_created", MutationTypeCreated),
+			sql.Named("mutation_type_modified", MutationTypeModified),
+			sql.Named("mutation_type_moved", MutationTypeMoved),
+		)
+	}
 
 	return errors.WithStack(err)
 }
 
-func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsName FSName) error {
 	_, err := s.db.ExecContext(
 		ctx,
-		`WITH previous AS (SELECT type, version, device_id, entry_id, parent_folder_id, hash
+		`WITH previous AS (SELECT fs_name, version, device_id, entry_id, parent_folder_id, hash
 						     FROM filesystem
 						    WHERE version = :version_previous
-					          AND type = :fstype),
-				  new AS (SELECT type, version, device_id, entry_id, parent_folder_id, hash
+					          AND fs_name = :fs_name),
+				  new AS (SELECT fs_name, version, device_id, entry_id, parent_folder_id, hash
 						    FROM filesystem
 						   WHERE version = :version_new
-						     AND type = :fstype)
+						     AND fs_name = :fs_name)
 
 		INSERT INTO staging_fs_mutations
 
 		SELECT
 			:mutation_type_deleted,
-			previous.type,
+			previous.fs_name,
 			previous.version,
 			previous.device_id,
 			previous.entry_id
@@ -520,7 +603,7 @@ func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsType FST
 
 		 SELECT
 			:mutation_type_created,
-			new.type,
+			new.fs_name,
 			new.version,
 			new.device_id,
 			new.entry_id
@@ -531,7 +614,7 @@ func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsType FST
 
 		 SELECT
 			:mutation_type_modified,
-			new.type,
+			new.fs_name,
 			new.version,
 			new.device_id,
 			new.entry_id
@@ -546,14 +629,14 @@ func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsType FST
 
 		 SELECT
 			:mutation_type_moved,
-			new.type,
+			new.fs_name,
 			new.version,
 			new.device_id,
 			new.entry_id
 		  FROM new JOIN previous USING (device_id, entry_id)
 		 -- it should be noted that a file may both move and change
 		 WHERE new.parent_folder_id != previous.parent_folder_id`,
-		sql.Named("fstype", fsType),
+		sql.Named("fs_name", fsName),
 		sql.Named("version_previous", VersionPrevious),
 		sql.Named("version_new", VersionNew),
 		sql.Named("mutation_type_deleted", MutationTypeDeleted),
@@ -565,15 +648,8 @@ func (s *SQLite3) refreshFSMutationsStagingTable(ctx context.Context, fsType FST
 	return errors.WithStack(err)
 }
 
-// FSType describes a file system type.
-type FSType string
-
-const (
-	// LocalFileSystem represents the local file system (non-cloud).
-	LocalFileSystem FSType = "local"
-	// PCloudFileSystem represents the pCloud file system.
-	PCloudFileSystem FSType = "pCloud"
-)
+// FSName is a descriptive name for the tracked file system.
+type FSName string
 
 // SyncStatus defines the status of the sync. It is used to prevent refreshing data in the
 // filesystem table when it has not yet been completely sync'ed.
@@ -600,18 +676,18 @@ const (
 
 // DeleteVersionNew removes "new" file system entries for the specified file system.
 // This would be performed with a view to load a new "VersionNew" set, in replacement.
-func (s *SQLite3) DeleteVersionNew(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) DeleteVersionNew(ctx context.Context, fsName FSName) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = s.deleteVersion(ctx, tx, fsType, VersionNew)
+	err = s.deleteVersion(ctx, tx, fsName, VersionNew)
 	if err != nil {
 		return doRollback(tx, err)
 	}
 
-	err = s.deleteFSMutations(ctx, tx, fsType)
+	err = s.deleteFSMutations(ctx, tx, fsName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -630,13 +706,13 @@ func (s *SQLite3) DeleteVersionNew(ctx context.Context, fsType FSType) error {
 	return nil
 }
 
-func (s *SQLite3) deleteVersionPrevious(ctx context.Context, tx *sql.Tx, fsType FSType) error {
-	err := s.deleteVersion(ctx, tx, fsType, VersionPrevious)
+func (s *SQLite3) deleteVersionPrevious(ctx context.Context, tx *sql.Tx, fsName FSName) error {
+	err := s.deleteVersion(ctx, tx, fsName, VersionPrevious)
 	if err != nil {
 		return doRollback(tx, err)
 	}
 
-	err = s.deleteFSMutations(ctx, tx, fsType)
+	err = s.deleteFSMutations(ctx, tx, fsName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -644,14 +720,14 @@ func (s *SQLite3) deleteVersionPrevious(ctx context.Context, tx *sql.Tx, fsType 
 	return nil
 }
 
-func (s *SQLite3) deleteVersion(ctx context.Context, tx *sql.Tx, fsType FSType, version Version) error {
+func (s *SQLite3) deleteVersion(ctx context.Context, tx *sql.Tx, fsName FSName, version Version) error {
 	_, err := tx.ExecContext(
 		ctx,
 		`DELETE FROM "filesystem"
 		 WHERE version = ?
-		   AND type = ?`,
+		   AND fs_name = ?`,
 		version,
-		fsType,
+		fsName,
 	)
 	if err != nil {
 		return errors.WithStack(err)
@@ -660,12 +736,12 @@ func (s *SQLite3) deleteVersion(ctx context.Context, tx *sql.Tx, fsType FSType, 
 	return nil
 }
 
-func (s *SQLite3) deleteFSMutations(ctx context.Context, tx *sql.Tx, fsType FSType) error {
+func (s *SQLite3) deleteFSMutations(ctx context.Context, tx *sql.Tx, fsName FSName) error {
 	_, err := tx.ExecContext(
 		ctx,
 		`DELETE FROM "staging_fs_mutations"
-		 WHERE fs_type = ?`,
-		fsType,
+		 WHERE fs_name = ?`,
+		fsName,
 	)
 	if err != nil {
 		return errors.WithStack(err)
@@ -686,15 +762,15 @@ func (s *SQLite3) deleteCrossFSMutations(ctx context.Context, tx *sql.Tx) error 
 	return nil
 }
 
-// MarkNewFileSystemEntriesAsPrevious clears the "previous" file system entries for the specified
+// RotateFileSystemVersions clears the "previous" file system entries for the specified
 // file system and marks the "new" file system entries as "previous".
-func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) RotateFileSystemVersions(ctx context.Context, fsName FSName) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	err = s.deleteVersionPrevious(ctx, tx, fsType)
+	err = s.deleteVersionPrevious(ctx, tx, fsName)
 	if err != nil {
 		return doRollback(tx, err)
 	}
@@ -704,16 +780,16 @@ func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 		`UPDATE "filesystem"
 		 SET version = ?
 		 WHERE version = ?
-		   AND type = ?`,
+		   AND fs_name = ?`,
 		VersionPrevious,
 		VersionNew,
-		fsType,
+		fsName,
 	)
 	if err != nil {
 		return doRollback(tx, err)
 	}
 
-	err = s.deleteFSMutations(ctx, tx, fsType)
+	err = s.deleteFSMutations(ctx, tx, fsName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -732,33 +808,84 @@ func (s *SQLite3) MarkNewFileSystemEntriesAsPrevious(ctx context.Context, fsType
 	return nil
 }
 
-// MarkSyncRequired marks the status of the sync as "required".
+func (s *SQLite3) FindSyncPeers(ctx context.Context, fsName FSName) ([]FSName, error) {
+	panic("add a new table 'fs_status' (fs_name, fs_status) where fs_status can be ['changed', 'up-to-date']")
+	panic("when the above has been done, FindSyncPeers will likely work differently and so will the other *Sync*() methods")
+
+	rows, err := s.db.QueryContext(
+		ctx,
+		`SELECT from_fs AS fs_name,
+		 FROM sync_pairs
+		 WHERE to_fs == :fs_name
+
+		 UNION
+
+		 SELECT to_fs AS fs_name,
+		 FROM sync_pairs
+		 WHERE from_fs == :fs_name`,
+		sql.Named("fs_name", fsName),
+	)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	peers := []FSName{}
+
+	for rows.Next() {
+		var peer FSName
+
+		err := rows.Scan(&peer)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		peers = append(peers, peer)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return peers, nil
+}
+
+// MarkFileSystemAsChanged marks the status of the file system as "changed".
 // This also triggers the internal refresh of all staging tables.
-func (s *SQLite3) MarkSyncRequired(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) MarkFileSystemAsChanged(ctx context.Context, fsName FSName) error {
+	panic("this should be for a sync pair, not file system by name")
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
-	for _, fsType := range []FSType{PCloudFileSystem, LocalFileSystem} {
-		err = s.refreshFSMutationsStagingTable(ctx, fsType)
+	syncPeers, err := s.FindSyncPeers(ctx, fsName)
+	if err != nil {
+		return err
+	}
+
+	syncPeers = append(syncPeers, fsName)
+
+	for _, fsName := range syncPeers {
+		err = s.refreshFSMutationsStagingTable(ctx, fsName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 	}
 
-	err = s.refreshCrossFSMutationsStagingTable(ctx, PCloudFileSystem, LocalFileSystem)
+	err = s.refreshCrossFSMutationsStagingTable(ctx, fsName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 
 	_, err = tx.ExecContext(
 		ctx,
-		`INSERT INTO "sync" ("type", "status")
+		`INSERT INTO "sync" ("fs_name", "status")
 		 VALUES (?, ?)
-		 ON CONFLICT ("type")
+		 ON CONFLICT ("fs_name")
 		 DO UPDATE SET "status" = excluded.status`,
-		fsType,
+		fsName,
 		SyncStatusRequired,
 	)
 	if err != nil {
@@ -774,14 +901,15 @@ func (s *SQLite3) MarkSyncRequired(ctx context.Context, fsType FSType) error {
 }
 
 // MarkSyncInProgress marks the status of the sync as "in progress".
-func (s *SQLite3) MarkSyncInProgress(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) MarkSyncInProgress(ctx context.Context, fsName FSName) error {
+	panic("this should be for a sync pair, not file system by name")
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO "sync" ("type", "status")
+		`INSERT INTO "sync" ("fs_name", "status")
 		 VALUES (?, ?)
-		 ON CONFLICT ("type")
+		 ON CONFLICT ("fs_name")
 		 DO UPDATE SET "status" = excluded.status`,
-		fsType,
+		fsName,
 		SyncStatusInProgress,
 	)
 
@@ -791,45 +919,63 @@ func (s *SQLite3) MarkSyncInProgress(ctx context.Context, fsType FSType) error {
 // MarkSyncComplete marks the status of the sync as "complete".
 // TODO: it may be that the staging table should be cleared down, although not essential because
 // that is properly taken care of by other methods that change the state of table "filesystem".
-func (s *SQLite3) MarkSyncComplete(ctx context.Context, fsType FSType) error {
+func (s *SQLite3) MarkSyncComplete(ctx context.Context, fsName FSName) error {
+	panic("this should be for a sync pair, not file system by name")
 	_, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO "sync" ("type", "status")
+		`INSERT INTO "sync" ("fs_name", "status")
 		 VALUES (?, ?)
-		 ON CONFLICT ("type")
+		 ON CONFLICT ("fs_name")
 		 DO UPDATE SET "status" = excluded.status`,
-		fsType,
+		fsName,
 		SyncStatusComplete,
 	)
 
 	return errors.WithStack(err)
 }
 
-// GetSyncStatus returns the current status of the sync for the specified fsType.
+type FSInfo struct {
+	FSName    string
+	FSDriver  FSDriver
+	FSRoot    string
+	FSChanged bool
+}
+
+// GetFileSystemInfo returns high level information about the file system fsName.
 // It will return an error (no rows found) if it cannot find the status row.
-func (s *SQLite3) GetSyncStatus(ctx context.Context, fsType FSType) (SyncStatus, error) {
-	status := ""
+func (s *SQLite3) GetFileSystemInfo(ctx context.Context, fsName FSName) (*FSInfo, error) {
+	var fsInfo FSInfo
 
 	err := s.db.QueryRowContext(
 		ctx,
-		`SELECT status FROM "sync" WHERE "type" = ?`,
-		fsType,
-	).Scan(&status)
+		`SELECT fs_name, fs_driver, fs_root, fs_changed
+		 FROM "fs_info"
+		 WHERE "fs_name" = ?`,
+		fsName,
+	).Scan(
+		&fsInfo.FSName,
+		&fsInfo.FSDriver,
+		&fsInfo.FSRoot,
+		&fsInfo.FSChanged,
+	)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
 
-	return SyncStatus(status), errors.WithStack(err)
+	return &fsInfo, nil
 }
 
-// IsFileSystemEmpty returns true if no entry data exists at all in the database for `fsType`,
+// IsFileSystemEmpty returns true if no entry data exists at all in the database for `fsName`,
 // otherwise it returns false.
-func (s *SQLite3) IsFileSystemEmpty(ctx context.Context, fsType FSType) (bool, error) {
+func (s *SQLite3) IsFileSystemEmpty(ctx context.Context, fsName FSName) (bool, error) {
 	previousRowsCount := 0
 
 	err := s.db.QueryRowContext(
 		ctx,
 		`SELECT count(*) FROM "filesystem"
-		 WHERE "type" = ?
+		 WHERE "fs_name" = ?
 		   AND "version" = ?`,
-		fsType,
+		fsName,
 		VersionPrevious,
 	).Scan(&previousRowsCount)
 	if err != nil {
@@ -841,9 +987,9 @@ func (s *SQLite3) IsFileSystemEmpty(ctx context.Context, fsType FSType) (bool, e
 	err = s.db.QueryRowContext(
 		ctx,
 		`SELECT count(*) FROM "filesystem"
-		 WHERE "type" = ?
+		 WHERE "fs_name" = ?
 		   AND "version" = ?`,
-		fsType,
+		fsName,
 		VersionNew,
 	).Scan(&newRowsCount)
 	if err != nil {

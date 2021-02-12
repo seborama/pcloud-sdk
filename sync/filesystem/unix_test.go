@@ -58,7 +58,7 @@ func TestUnix_StreamFileData_MkFile(t *testing.T) {
 	ctx := context.Background()
 
 	fsEntry := db.FSEntry{
-		FSType:         db.LocalFileSystem,
+		FSName:         db.LocalFileSystem,
 		DeviceID:       "dev-id-1",
 		EntryID:        123,
 		IsFolder:       false,
