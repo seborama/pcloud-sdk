@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
 
 	"github.com/seborama/pcloud/tracker"
 	"github.com/seborama/pcloud/tracker/db"
@@ -42,7 +43,7 @@ func (testsuite *IntegrationTestSuite) TearDownSuite() {
 func (testsuite *IntegrationTestSuite) BeforeTest(suiteName, testName string) {
 	testsuite.makeDB()
 
-	track, err := tracker.NewTracker(testsuite.ctx, testsuite.store)
+	track, err := tracker.NewTracker(testsuite.ctx, zap.NewNop(), testsuite.store, nil /*filesystem.NewLocal()*/, "some_fs")
 	testsuite.Require().NoError(err)
 	testsuite.tracker = track
 }
@@ -65,7 +66,7 @@ func (testsuite *IntegrationTestSuite) makeDB() {
 	testsuite.store = dbase
 }
 
-func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
+func (testsuite *IntegrationTestSuite) TestFindMutations_FilesDeleted() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
@@ -176,7 +177,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -189,7 +190,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesDeleted() {
 	}
 }
 
-func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
+func (testsuite *IntegrationTestSuite) TestFindMutations_FilesCreated() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
@@ -303,7 +304,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -316,7 +317,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FilesCreated() {
 	}
 }
 
-func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
+func (testsuite *IntegrationTestSuite) TestFindMutations_FileModified() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
@@ -380,7 +381,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -393,7 +394,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileModified() {
 	}
 }
 
-func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
+func (testsuite *IntegrationTestSuite) TestFindMutations_FileMoved() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
@@ -459,7 +460,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -472,7 +473,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_FileMoved() {
 	}
 }
 
-func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
+func (testsuite *IntegrationTestSuite) TestFindMutations_NoChanges() {
 	time1 := time.Now().Add(-24 * time.Hour)
 	time4 := time.Now().Add(-21 * time.Hour)
 	time5 := time.Now().Add(-20 * time.Hour)
@@ -495,7 +496,7 @@ func (testsuite *IntegrationTestSuite) TestFindPCloudMutations_NoChanges() {
 
 	expected := db.FSMutations{}
 
-	fsMutations, err := testsuite.tracker.FindPCloudMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {

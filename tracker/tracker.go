@@ -2,19 +2,18 @@ package tracker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
 	"github.com/seborama/pcloud/tracker/db"
-	"github.com/seborama/pcloud/tracker/filesystem"
 )
 
 type storer interface {
 	AddNewFileSystemEntries(ctx context.Context, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
 	GetLatestFileSystemEntries(ctx context.Context, fsName db.FSName) ([]db.FSEntry, error)
-	GetPCloudMutations(ctx context.Context) (db.FSMutations, error)
-	GetLocalMutations(ctx context.Context) (db.FSMutations, error)
+	GetFileSystemMutations(ctx context.Context, fsName db.FSName) (db.FSMutations, error)
 	GetPCloudVsLocalMutations(ctx context.Context) (db.FSMutations, error)
 	DeleteVersionNew(ctx context.Context, fsName db.FSName) error
 	RotateFileSystemVersions(ctx context.Context, fsName db.FSName) error
@@ -28,15 +27,19 @@ type storer interface {
 
 // Tracker contains the elements necessary to track file system mutations.
 type Tracker struct {
-	store  storer
-	logger *zap.Logger
+	logger   *zap.Logger
+	store    storer
+	fsDriver FSDriver
+	fsName   db.FSName // TODO: not ideal to have this coupling with "db"
 }
 
 // NewTracker creates a new initiliased Tracker.
-func NewTracker(ctx context.Context, store storer) (*Tracker, error) {
+func NewTracker(ctx context.Context, logger *zap.Logger, store storer, fsDriver FSDriver, fsName db.FSName) (*Tracker, error) {
 	t := &Tracker{
-		store: store,
-		// TODO: add 'logger'!
+		logger:   logger,
+		store:    store,
+		fsDriver: fsDriver,
+		fsName:   fsName,
 	}
 
 	return t, nil
@@ -53,28 +56,19 @@ type FSDriver interface {
 
 // TODO: the fact that this method returns an interface indicates a problem.
 //       the implementation of this method likely belongs to the sync package, not the tracker.
-func (t *Tracker) GetSyncDetails(ctx context.Context, fsName db.FSName) (FSDriver, string, error) {
-	fsDriver, rootPath, err := t.store.GetSyncDetails(ctx, fsName)
+func (t *Tracker) GetRootPath(ctx context.Context) (string, error) {
+	_, rootPath, err := t.store.GetSyncDetails(ctx, t.fsName)
 	if err != nil {
-		return nil, "", err
+		return "", err
 	}
 
-	switch fsDriver {
-	case db.FSDriverPCloud:
-		return filesystem.NewPCloud(), rootPath, nil
-
-	case db.FSDriverLocal:
-		return filesystem.NewLocal(), rootPath, nil
-
-	default:
-		return nil, "", errors.Errorf("unknown file system type '%s' for file system with name '%s'", fsDriver, fsName)
-	}
+	return rootPath, nil
 }
 
 // RefreshFSContents walks the specified file system and saves the new contents as VersionNew.
 // In order to proceed, RefreshFSContents first drops all VersionPrevious entries and moves the
 // current VersionNew entries as VersionPrevious.
-func (t *Tracker) RefreshFSContents(ctx context.Context, fsName db.FSName, opts ...Options) error {
+func (t *Tracker) RefreshFSContents(ctx context.Context, opts ...RefreshOption) error {
 	cfg := config{
 		entriesChSize: 100,
 	}
@@ -83,25 +77,25 @@ func (t *Tracker) RefreshFSContents(ctx context.Context, fsName db.FSName, opts 
 		opt(&cfg)
 	}
 
-	panic("this whole method should be inside a transaction for data consistency")
-	err := t.rotateFileSystemVersions(ctx, fsName)
+	fmt.Println("THIS WHOLE METHOD SHOULD BE INSIDE A TRANSACTION FOR DATA CONSISTENCY")
+	err := t.rotateFileSystemVersions(ctx)
 	if err != nil {
 		return err
 	}
 
 	fsEntriesCh, errCh := t.store.AddNewFileSystemEntries(ctx, db.WithEntriesChannelSize(cfg.entriesChSize))
 
-	fsDriver, rootPath, err := t.GetSyncDetails(ctx, fsName)
+	rootPath, err := t.GetRootPath(ctx)
 	if err != nil {
 		return err
 	}
 
-	err = fsDriver.Walk(ctx, fsName, rootPath, fsEntriesCh, errCh)
+	err = t.fsDriver.Walk(ctx, t.fsName, rootPath, fsEntriesCh, errCh)
 	if err != nil {
 		return err
 	}
 
-	err = t.markFileSystemAsChanged(ctx, fsName)
+	err = t.markFileSystemAsChanged(ctx)
 	if err != nil {
 		return err
 	}
@@ -109,8 +103,8 @@ func (t *Tracker) RefreshFSContents(ctx context.Context, fsName db.FSName, opts 
 	return nil
 }
 
-func (t *Tracker) rotateFileSystemVersions(ctx context.Context, fsName db.FSName) error {
-	fsInfo, err := t.store.GetFileSystemInfo(ctx, fsName)
+func (t *Tracker) rotateFileSystemVersions(ctx context.Context) error {
+	fsInfo, err := t.store.GetFileSystemInfo(ctx, t.fsName)
 	if err != nil {
 		return errors.WithMessage(err, "database error or sync has not been initialised")
 	}
@@ -119,68 +113,48 @@ func (t *Tracker) rotateFileSystemVersions(ctx context.Context, fsName db.FSName
 		// The file system is marked as changed. This indicates a sync is pending.
 		// So VersionPrevious should not be modified and we only need to refresh VersionNew
 		// to allow a more up-to-date sync when it takes place.
-		t.logger.Info("clearing down latest version of file system while preserving previous version intact", zap.String("fs_name", string(fsName)))
-		return t.store.DeleteVersionNew(ctx, fsName)
+		t.logger.Debug("clearing down latest version of file system while preserving previous version intact", zap.String("fs_name", string(t.fsName)))
+		return t.store.DeleteVersionNew(ctx, t.fsName)
 	}
 
 	// The file system is not marked as changed. We can replace VersionPrevious with the
 	// current VersionNew. After this operation, VersionNew is empty.
-	t.logger.Info("rotating versions of file system", zap.String("fs_name", string(fsName)))
-	return t.store.RotateFileSystemVersions(ctx, fsName)
+	t.logger.Debug("rotating versions of file system", zap.String("fs_name", string(t.fsName)))
+	return t.store.RotateFileSystemVersions(ctx, t.fsName)
 }
 
-func (t *Tracker) markFileSystemAsChanged(ctx context.Context, fsName db.FSName) error {
-	fsInfo, err := t.store.GetFileSystemInfo(ctx, fsName)
+func (t *Tracker) markFileSystemAsChanged(ctx context.Context) error {
+	fsInfo, err := t.store.GetFileSystemInfo(ctx, t.fsName)
 	if err != nil {
 		return err
 	}
 
 	if fsInfo.FSChanged {
-		t.logger.Warn("state of file system is already marked as 'changed'", zap.String("fs_name", string(fsName)))
+		t.logger.Warn("state of file system is already marked as 'changed'", zap.String("fs_name", string(t.fsName)))
 		return nil
 	}
 
-	return t.store.MarkFileSystemAsChanged(ctx, fsName)
+	return t.store.MarkFileSystemAsChanged(ctx, t.fsName)
 }
 
 type config struct {
 	entriesChSize int
 }
 
-type Options func(*config)
+type RefreshOption func(*config)
 
 // WithEntriesChannelSize is a functional parameter that allows to choose the size of the entries
 // channel used by AddNewFileSystemEntries.
-func WithEntriesChannelSize(n int) Options {
+func WithEntriesChannelSize(n int) RefreshOption {
 	return func(obj *config) {
 		obj.entriesChSize = n
 	}
 }
 
-// FindPCloudVsLocalMutations determines all mutations that have taken place between PCloud
-// vs Local.
-func (t *Tracker) FindPCloudVsLocalMutations(ctx context.Context) (db.FSMutations, error) {
-	fsMutations, err := t.store.GetPCloudVsLocalMutations(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return fsMutations, nil
-}
-
-// FindPCloudMutations determines all mutations that have taken place in PCloud between
+// FindMutations finds all mutations that have taken place in the file system between
 // VersionPrevious and VersionNew.
-func (t *Tracker) FindPCloudMutations(ctx context.Context) (db.FSMutations, error) {
-	fsMutations, err := t.store.GetPCloudMutations(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return fsMutations, nil
-}
-
-// FindLocalMutations determines all mutations that have taken place in the Local file system
-// between VersionPrevious and VersionNew.
-func (t *Tracker) FindLocalMutations(ctx context.Context) (db.FSMutations, error) {
-	fsMutations, err := t.store.GetLocalMutations(ctx)
+func (t *Tracker) FindMutations(ctx context.Context) (db.FSMutations, error) {
+	fsMutations, err := t.store.GetFileSystemMutations(ctx, t.fsName)
 	if err != nil {
 		return nil, err
 	}
