@@ -129,7 +129,7 @@ func (s *SQLite3) AddNewFileSystemEntries(ctx context.Context, opts ...Options) 
 			_, err = tx.ExecContext(
 				ctx,
 				`INSERT INTO "filesystem"
-			(type, version, device_id, entry_id, is_folder, path, name, parent_folder_id, created, modified, size, hash)
+			(fs_name, version, device_id, entry_id, is_folder, path, name, parent_folder_id, created, modified, size, hash)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				entry.FSName,
 				VersionNew,
@@ -935,7 +935,7 @@ func (s *SQLite3) MarkSyncComplete(ctx context.Context, fsName FSName) error {
 }
 
 type FSInfo struct {
-	FSName    string
+	FSName    FSName
 	FSDriver  FSDriver
 	FSRoot    string
 	FSChanged bool
