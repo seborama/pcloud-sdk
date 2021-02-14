@@ -12,15 +12,10 @@ import (
 
 type storer interface {
 	AddNewFileSystemEntries(ctx context.Context, opts ...db.Options) (chan<- db.FSEntry, <-chan error)
-	GetLatestFileSystemEntries(ctx context.Context, fsName db.FSName) ([]db.FSEntry, error)
 	GetFileSystemMutations(ctx context.Context, fsName db.FSName) (db.FSMutations, error)
-	GetPCloudVsLocalMutations(ctx context.Context) (db.FSMutations, error)
 	DeleteVersionNew(ctx context.Context, fsName db.FSName) error
 	RotateFileSystemVersions(ctx context.Context, fsName db.FSName) error
 	MarkFileSystemAsChanged(ctx context.Context, fsName db.FSName) error
-	MarkSyncInProgress(ctx context.Context, fsName db.FSName) error
-	MarkSyncComplete(ctx context.Context, fsName db.FSName) error
-	IsFileSystemEmpty(ctx context.Context, fsName db.FSName) (bool, error)
 	GetFileSystemInfo(ctx context.Context, fsName db.FSName) (*db.FSInfo, error)
 	GetSyncDetails(ctx context.Context, fsName db.FSName) (db.FSDriver, string, error)
 }
