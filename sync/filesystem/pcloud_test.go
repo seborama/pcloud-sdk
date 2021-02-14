@@ -63,7 +63,7 @@ func TestPCloud_StreamFileData_MkFile(t *testing.T) {
 	u2 := filesystem.NewPCloud(pCloudSDK2)
 
 	fsEntry := db.FSEntry{
-		FSType:         db.LocalFileSystem,
+		FSName:         db.LocalFileSystem,
 		DeviceID:       "dev-id-1",
 		EntryID:        123,
 		IsFolder:       false,

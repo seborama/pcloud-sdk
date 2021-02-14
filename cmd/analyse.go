@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
 
 	"github.com/seborama/pcloud/sdk"
 	"github.com/seborama/pcloud/tracker"
 	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud/tracker/filesystem"
 )
 
 func analyse(c *cli.Context) error {
@@ -46,19 +48,24 @@ func analyse(c *cli.Context) error {
 	}
 	defer func() { _ = store.Close() }()
 
-	track, err := tracker.NewTracker(ctx, pCloudClient, store)
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
+	pCloudFS := filesystem.NewPCloud(pCloudClient)
+
+	track, err := tracker.NewTracker(ctx, logger, store, pCloudFS, "pcloud")
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("ListLatestPCloudContents...")
-	err = track.ListLatestPCloudContents(ctx, "/pcloud")
+	fmt.Println("RefreshFSContents...")
+	err = track.RefreshFSContents(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("FindPCloudMutations...")
-	fsm, err := track.FindPCloudMutations(ctx)
+	fmt.Println("ListMutations...")
+	fsm, err := track.ListMutations(ctx)
 	if err != nil {
 		return err
 	}
@@ -75,14 +82,14 @@ func analyse(c *cli.Context) error {
 
 	fmt.Printf("PCloud mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
-	fmt.Println("ListLatestLocalContents...")
-	err = track.ListLatestLocalContents(ctx, "/tmp/pcloudLocalFS")
+	fmt.Println("RefreshFSContents...")
+	err = track.RefreshFSContents(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("FindLocalMutations...")
-	fsm, err = track.FindLocalMutations(ctx)
+	fmt.Println("ListMutations...")
+	fsm, err = track.ListMutations(ctx)
 	if err != nil {
 		return err
 	}
@@ -97,7 +104,7 @@ func analyse(c *cli.Context) error {
 		s = len(j)
 	}
 
-	fmt.Printf("PCloud vs Local mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
+	fmt.Printf("Local mutations: count=%d\nFirst few:\n%s\n", len(fsm), string(j[:s]))
 
 	return nil
 }

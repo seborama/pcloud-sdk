@@ -61,7 +61,7 @@ func (m *Migrator) MigrateUp(ctx context.Context) (err error) {
 	}
 
 	for version, stmt := range migrations.SQLite3[version+1:] {
-		fmt.Printf("applying migrations: %d\n", version)
+		fmt.Printf("applying migrations version: %d\n", version)
 
 		err = m.recordMigrationVersion(ctx, version, migrationStatusInProgress)
 		if err != nil {
