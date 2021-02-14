@@ -854,6 +854,37 @@ func (s *SQLite3) FindSyncPeers(ctx context.Context, fsName FSName) ([]FSName, e
 // MarkFileSystemAsChanged marks the status of the file system as "changed".
 // This also triggers the internal refresh of all staging tables.
 func (s *SQLite3) MarkFileSystemAsChanged(ctx context.Context, fsName FSName) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	err = s.refreshFSMutationsStagingTable(ctx, fsName)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	_, err = tx.ExecContext(
+		ctx,
+		`UPDATE "fs_info" SET fs_changed = TRUE
+		 WHERE "fs_name" = $1`,
+		fsName,
+	)
+	if err != nil {
+		return doRollback(tx, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return doRollback(tx, err)
+	}
+
+	return nil
+}
+
+// MarkSyncAsChanged marks the status of the sync as "changed".
+// This also triggers the internal refresh of all staging tables.
+func (s *SQLite3) MarkSyncAsChanged(ctx context.Context, fsName FSName) error {
 	panic("this should be for a sync pair, not file system by name")
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
