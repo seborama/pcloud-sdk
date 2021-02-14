@@ -177,7 +177,7 @@ func (testsuite *IntegrationTestSuite) TestFindMutations_FilesDeleted() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.ListMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -304,7 +304,7 @@ func (testsuite *IntegrationTestSuite) TestFindMutations_FilesCreated() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.ListMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -381,7 +381,7 @@ func (testsuite *IntegrationTestSuite) TestFindMutations_FileModified() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.ListMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -460,7 +460,7 @@ func (testsuite *IntegrationTestSuite) TestFindMutations_FileMoved() {
 		},
 	}
 
-	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.ListMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {
@@ -496,7 +496,7 @@ func (testsuite *IntegrationTestSuite) TestFindMutations_NoChanges() {
 
 	expected := db.FSMutations{}
 
-	fsMutations, err := testsuite.tracker.FindMutations(testsuite.ctx)
+	fsMutations, err := testsuite.tracker.ListMutations(testsuite.ctx)
 	testsuite.Require().NoError(err)
 
 	sortedMutations := func(elements db.FSMutations) func(i, j int) bool {

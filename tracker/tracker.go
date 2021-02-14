@@ -146,9 +146,9 @@ func WithEntriesChannelSize(n int) RefreshOption {
 	}
 }
 
-// FindMutations finds all mutations that have taken place in the file system between
+// ListMutations finds all mutations that have taken place in the file system between
 // VersionPrevious and VersionNew.
-func (t *Tracker) FindMutations(ctx context.Context) (db.FSMutations, error) {
+func (t *Tracker) ListMutations(ctx context.Context) (db.FSMutations, error) {
 	fsMutations, err := t.store.GetFileSystemMutations(ctx, t.fsName)
 	if err != nil {
 		return nil, err

@@ -23,7 +23,7 @@ func TestOneWay_Sync_Created(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1001,
 						IsFolder:       true,
@@ -44,7 +44,7 @@ func TestOneWay_Sync_Created(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1002,
 						IsFolder:       true,
@@ -65,7 +65,7 @@ func TestOneWay_Sync_Created(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        100201,
 						IsFolder:       false,
@@ -161,7 +161,7 @@ func TestOneWay_Sync_Deleted(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1001,
 						IsFolder:       true,
@@ -182,7 +182,7 @@ func TestOneWay_Sync_Deleted(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1002,
 						IsFolder:       true,
@@ -203,7 +203,7 @@ func TestOneWay_Sync_Deleted(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        100201,
 						IsFolder:       false,
@@ -258,7 +258,7 @@ func TestOneWay_Sync_Modified(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        100201,
 						IsFolder:       false,
@@ -274,7 +274,7 @@ func TestOneWay_Sync_Modified(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.LocalFileSystem,
+						FSName:         "local",
 						DeviceID:       "local-dev-id",
 						EntryID:        100100201,
 						IsFolder:       false,
@@ -364,7 +364,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionPrevious,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1001,
 						IsFolder:       true,
@@ -380,7 +380,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1001,
 						IsFolder:       true,
@@ -401,7 +401,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionPrevious,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1002,
 						IsFolder:       true,
@@ -417,7 +417,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        1002,
 						IsFolder:       true,
@@ -438,7 +438,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionPrevious,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        100201,
 						IsFolder:       false,
@@ -454,7 +454,7 @@ func TestOneWay_Sync_Moved(t *testing.T) {
 				{
 					Version: db.VersionNew,
 					FSEntry: db.FSEntry{
-						FSName:         db.PCloudFileSystem,
+						FSName:         "left",
 						DeviceID:       "dev-id",
 						EntryID:        100201,
 						IsFolder:       false,
