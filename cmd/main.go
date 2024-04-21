@@ -46,7 +46,7 @@ func main() {
 			},
 			{
 				Name:    "cli",
-				Aliases: []string{"a"},
+				Aliases: []string{"c"},
 				Usage:   "pCloud CLI",
 				Action:  pCLI,
 				Flags: []cli.Flag{
