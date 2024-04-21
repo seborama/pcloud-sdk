@@ -76,7 +76,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 		}()
 	}
 	if err != nil {
-		return resp.Header.Get("content-type"), nil, errors.Wrap(err, "http Do")
+		return "", nil, errors.Wrap(err, "http Do")
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
