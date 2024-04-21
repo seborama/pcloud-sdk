@@ -4,9 +4,13 @@ This is a pCloud client written in Go for cross-platform compatibility, such as 
 
 NOTE: I'm **not** affiliated to pCloud so this project is as good or as bad as it gets.
 
-## Go SDK
+## Go SDK 🤩
 
 See [SDK](sdk/README.md).
+
+## FUSE drive for pCloud (Linux and FreeBSD) 🤩😍
+
+See [fuse](fuse/README.md)
 
 ## Tracker (file system mutations)
 
@@ -28,11 +32,11 @@ While [pCloud's console client](https://github.com/pcloudcom/console-client) see
 
 1. ✅ implement a Go version of the SDK.
 
-2. implement a sync command.
+2. 🧑‍💻 FUSE integration (Linux / FreeBSD)
 
-3. CLI for basic pCloud interactions (copy, move, etc)
+3. implement a sync command.
 
-4. Fuse integration (Linux)
+4. CLI for basic pCloud interactions (copy, move, etc)
 
 ## pCloud API documentation
 
