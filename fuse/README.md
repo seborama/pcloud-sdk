@@ -8,9 +8,17 @@ I am developing on a Linux ARM Raspberry Pi4. I haven't (yet) tried Linux x86_64
 
 ## Status
 
-At this stage, this is purely explorative. The code base is entirely experimental, most features are not implemented or only partially.
+At this stage, this is explorative. The code base is entirely experimental, most features are not implemented or only partially.
+
+The drive can be mounted via the tests and it can be "walked" through.
+
+Files contents cannot be read just yet.
+
+No write operations are supported
 
 ## Change log
+
+2024-Apr-22 - The pCloud drive can listed entirely. `ls` on the root of the mount will list directories and files contained in the root of the pCloud drive.
 
 2024-Apr-21 - The pCloud drive can be mounted (via the test - see "Getting started"). `ls` on the root of the mount will list directories and files contained in the root of the pCloud drive.
 

@@ -60,6 +60,23 @@ func (c *Client) RenameFile(ctx context.Context, file T3PathOrFileID, destinatio
 	return r, nil
 }
 
+// Stat returns information about the file pointed to by fileid or path.
+// It's is recomended to use fileid.
+// https://docs.pcloud.com/methods/file/stat.html
+func (c *Client) Stat(ctx context.Context, file T3PathOrFileID, opts ...ClientOption) (*FileResult, error) {
+	q := toQuery(opts...)
+	file(q)
+
+	r := &FileResult{}
+
+	err := parseAPIOutput(r)(c.get(ctx, "stat", q))
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
 // CopyFile takes one file and copies it as another file in the user's filesystem.
 // Expects fileid or path to identify the source file and tofolderid+toname or topath to
 // identify destination filename.

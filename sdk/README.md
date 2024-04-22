@@ -54,7 +54,7 @@ TFA was possible thanks to [Glib Dzevo](https://github.com/gdzevo) and his [cons
   - ✅ checksumfile
   - ✅ deletefile
   - ✅ renamefile
-  - stat
+  - ✅ stat
 - Auth
   - sendverificationemail
   - verifyemail

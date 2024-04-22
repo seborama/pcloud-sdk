@@ -18,17 +18,17 @@ func Test(t *testing.T) {
 
 	mountpoint := "/tmp/pcloud_mnt"
 
-	c, err := pfuse.Mount(
+	drive, err := pfuse.Mount(
 		mountpoint,
 		pcClient,
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer func() { _ = c.Unmount() }()
+	defer func() { _ = drive.Unmount() }()
 
 	log.Println("Mouting FS")
-	err = c.Serve()
+	err = drive.Serve()
 	if err != nil {
 		log.Fatal(err)
 	}

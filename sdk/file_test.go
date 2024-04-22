@@ -36,6 +36,13 @@ func (testsuite *IntegrationTestSuite) Test_UploadFile() {
 	}
 }
 
+func (testsuite *IntegrationTestSuite) Test_Stat() {
+	fs, err := testsuite.pcc.Stat(testsuite.ctx, sdk.T3FileByID(testsuite.testFileID))
+	testsuite.Require().NoError(err)
+	testsuite.Equal(testsuite.testFileID, fs.Metadata.FileID)
+	testsuite.Equal("sample.file", fs.Metadata.Name)
+}
+
 func (testsuite *IntegrationTestSuite) createFiles() map[string]*os.File {
 	num := 3
 	files := map[string]*os.File{}

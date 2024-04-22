@@ -22,19 +22,27 @@ type Metadata struct {
 	Path string
 
 	// Generic
-	Name           string
-	Created        *APITime
-	IsMine         bool // TODO: when true, there are more fields available. See: https://github.com/pcloudcom/pclouddoc/blob/master/api.txt
+	Name    string
+	Created *APITime
+
+	IsMine bool `json:"ismine"`
+	// BEGIN: if IsMine == false
+	CanRead   bool `json:"canread,omitempty"`
+	CanModify bool `json:"canmodify,omitempty"`
+	CanDelete bool `json:"candelete,omitempty"`
+	CanCreate bool `json:"cancreate,omitempty"` // for folders only
+	// END: if IsMine == false
+
 	Thumb          bool
 	Modified       *APITime
 	Comments       uint64
 	ID             string
-	IsShared       bool
+	IsShared       bool `json:"isshared"`
 	Icon           string
-	IsFolder       bool
-	ParentFolderID uint64
-	IsDeleted      bool   // this may be set by DeleteFile, for instance
-	DeletedFileID  uint64 // this may be set by RenameFile, for instance
+	IsFolder       bool   `json:"isfolder"`
+	ParentFolderID uint64 `json:"parentfolderid"`
+	IsDeleted      bool   `json:"isdeleted"`     // this may be set by DeleteFile, for instance
+	DeletedFileID  uint64 `json:"deletedfileid"` // this may be set by RenameFile, for instance
 
 	// Folder-specific
 	FolderID uint64      `json:"folderid,omitempty"`
@@ -53,6 +61,27 @@ type Metadata struct {
 	Category    int32  `json:"category,omitempty"`
 	Size        uint64 `json:"size,omitempty"`
 	ContentType string `json:"contenttype,omitempty"`
+
+	// optionally, image/video files may have:
+	Width  int `json:"width,omitempty"`
+	Height int `json:"height,omitempty"`
+
+	// optionally, audio files may have:
+	Artist  string `json:"artist,omitempty"`
+	Album   string `json:"album,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Genre   string `json:"genre,omitempty"`
+	TrackNo string `json:"trackno,omitempty"`
+
+	// optionally, video files may have (see also Width and Height in image files above):
+	Duration        string `json:"duration,omitempty"`        // duration of the video in seconds (floating point number sent as string)
+	FPS             string `json:"fps,omitempty"`             // frames per second rate of the video (floating point number sent as string)
+	VideoCodec      string `json:"videocodec,omitempty"`      // codec used for enconding of the video
+	AudioCodec      string `json:"audiocodec,omitempty"`      // codec used for enconding of the audio
+	VideoBitrate    int    `json:"videobitrate,omitempty"`    // bitrate of the video in kilobits
+	AudioBitrate    int    `json:"audiobitrate,omitempty"`    // bitrate of the audio in kilobits
+	AudioSamplerate int    `json:"audiosamplerate,omitempty"` // sampling rate of the audio in Hz
+	Rotate          int    `json:"rotate,omitempty"`          // indicates that video should be rotated (0, 90, 180 or 270) degrees when playing}
 }
 
 // DeleteResult contains the properties returned by DeleteFolderRecursive.
