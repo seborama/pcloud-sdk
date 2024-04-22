@@ -10,6 +10,10 @@ See [SDK](sdk/README.md).
 
 ## FUSE drive for pCloud (Linux and FreeBSD) 🤩😍
 
+Mount your pCloud drive on Linux or FreeBSD just like any other disk.
+
+This is the pCloud virtual drive you have been waiting for on your Raspberry Pi, etc.
+
 See [fuse](fuse/README.md)
 
 ## Tracker (file system mutations)
