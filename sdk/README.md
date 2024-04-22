@@ -6,7 +6,7 @@
 make test-sdk
 ```
 
-The tests rely on the presence of environment variables to supply your credentials:
+The tests rely on the presence of environment variables to supply your credentials (**make sure you `export` the variables!**):
 - `GO_PCLOUD_USERNAME`
 - `GO_PCLOUD_PASSWORD`
 - `GO_PCLOUD_TFA_CODE` - BETA. Note that the device is automatically marked as trusted so TFA is not required the next time. You can remove the trust manually in your [account security settings](https://my.pcloud.com/#page=settings&settings=tab-security).
@@ -54,7 +54,7 @@ TFA was possible thanks to [Glib Dzevo](https://github.com/gdzevo) and his [cons
   - ✅ checksumfile
   - ✅ deletefile
   - ✅ renamefile
-  - stat
+  - ✅ stat
 - Auth
   - sendverificationemail
   - verifyemail
