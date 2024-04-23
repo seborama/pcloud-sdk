@@ -49,9 +49,10 @@ func Mount(mountpoint string, pcClient *sdk.Client) (*Drive, error) {
 			pcClient:  pcClient,
 			uid:       uint32(uid),
 			gid:       uint32(gid),
-			rdev:      531,
 			dirPerms:  0o750,
 			filePerms: 0o640,
+			dirValid:  2 * time.Second,
+			fileValid: time.Second,
 		},
 		conn: conn,
 	}, nil
@@ -70,9 +71,10 @@ type FS struct {
 	pcClient  *sdk.Client // TODO: define an interface
 	uid       uint32
 	gid       uint32
-	rdev      uint32
 	dirPerms  os.FileMode
 	filePerms os.FileMode
+	dirValid  time.Duration
+	fileValid time.Duration
 }
 
 // ensure interfaces conpliance
@@ -134,7 +136,7 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 
 	// TODO: is this necessary? perhaps only for the root folder?
 	d.Attributes = fuse.Attr{
-		Valid: time.Second,
+		Valid: d.fs.dirValid,
 		Inode: d.folderID,
 		Atime: fsList.Metadata.Modified.Time,
 		Mtime: fsList.Metadata.Modified.Time,
@@ -143,9 +145,7 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 		Nlink: 1, // TODO: is that right? How else can we find this value?
 		Uid:   d.fs.uid,
 		Gid:   d.fs.gid,
-		Rdev:  d.fs.rdev,
 	}
-
 	d.parentFolderID = fsList.Metadata.ParentFolderID
 	d.folderID = fsList.Metadata.FolderID
 
@@ -154,7 +154,7 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 			return item.Name, &Dir{
 				Type: fuse.DT_Dir,
 				Attributes: fuse.Attr{
-					Valid: time.Second,
+					Valid: d.fs.dirValid,
 					Inode: item.FolderID,
 					Atime: item.Modified.Time,
 					Mtime: item.Modified.Time,
@@ -163,9 +163,8 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 					Nlink: 1, // the official pCloud client can show other values that 1 - dunno how
 					Uid:   d.fs.uid,
 					Gid:   d.fs.gid,
-					Rdev:  d.fs.rdev,
 				},
-				Entries:        nil, // will be populated by Dir.Lookup
+				Entries:        nil, // will be populated upon access by Dir.Lookup or Dir.ReadDirAll
 				fs:             d.fs,
 				parentFolderID: item.ParentFolderID,
 				folderID:       item.FolderID,
@@ -176,7 +175,7 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 			Type: fuse.DT_File,
 			// Content: content, // TODO
 			Attributes: fuse.Attr{
-				Valid: time.Second,
+				Valid: d.fs.fileValid,
 				Inode: item.FileID,
 				Size:  item.Size,
 				Atime: item.Modified.Time,
@@ -186,8 +185,11 @@ func (d *Dir) materialiseFolder(ctx context.Context) error {
 				Nlink: 1, // TODO: is that right? How else can we find this value?
 				Uid:   d.fs.uid,
 				Gid:   d.fs.gid,
-				Rdev:  d.fs.rdev,
 			},
+			fs:       d.fs,
+			folderID: item.FolderID,
+			fileID:   item.FileID,
+			file:     nil,
 		}
 	})
 
@@ -257,23 +259,98 @@ type File struct {
 	Type       fuse.DirentType
 	Content    []byte
 	Attributes fuse.Attr
+	fs         *FS
+	folderID   uint64 // TODO: not needed??
+	fileID     uint64
+	file       *sdk.File
 }
 
 // ensure interfaces conpliance
 var (
 	_ = (fs.Node)((*File)(nil))
 	// _ = (fs.HandleWriter)((*File)(nil))
-	_ = (fs.HandleReadAller)((*File)(nil))
+	// _ = (fs.HandleReadAller)((*File)(nil)) // NOTE: it's best avoiding to implement this method to avoid costly memory operations with large files.
+	_ = (fs.HandleReader)((*File)(nil))
+	_ = (fs.NodeOpener)((*File)(nil))
+	_ = (fs.HandleFlusher)((*File)(nil))
+	_ = (fs.HandleReleaser)((*File)(nil))
 	// _ = (fs.NodeSetattrer)((*File)(nil))
 	// _ = (EntryGetter)((*File)(nil))
 )
 
-func (f File) Attr(ctx context.Context, a *fuse.Attr) error {
+func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	log.Println("File.Attr called")
 	*a = f.Attributes
 	return nil
 }
 
-func (File) ReadAll(ctx context.Context) ([]byte, error) {
-	return []byte(nil), nil // TODO
+type fileHandle struct {
+	file *sdk.File
+}
+
+func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	log.Println("File.Open - 1 - req.ID", req.ID, " - resp.Handle:", resp.Handle)
+
+	// TODO: this is temporary - for now, let's focus on a read-only implementation
+	if !req.Flags.IsReadOnly() {
+		return nil, fuse.Errno(syscall.EACCES)
+	}
+
+	file, err := f.fs.pcClient.FileOpen(ctx, 0, sdk.T4FileByID(f.fileID))
+	if err != nil {
+		return nil, err
+	}
+
+	f.file = file
+	log.Println("File.Open - 2 - req.ID", req.ID, " - file.FD:", file.FD)
+	resp.Flags |= fuse.OpenKeepCache
+
+	return &File{
+		Type:       f.Type,
+		Attributes: f.Attributes,
+		fs:         f.fs,
+		folderID:   f.folderID,
+		fileID:     f.fileID,
+		file:       file,
+	}, nil
+}
+
+func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+	log.Println("File.Read called - req.ID", req.ID, " - req.Handle:", req.Handle)
+	if f.file == nil {
+		return syscall.ENOENT
+	}
+
+	data, err := f.fs.pcClient.FilePRead(ctx, f.file.FD, uint64(req.Size), uint64(req.Offset))
+	if err != nil {
+		return err
+	}
+	resp.Data = data
+
+	return nil
+}
+
+// Flush is called each time the file or directory is closed.
+// Because there can be multiple file descriptors referring to a
+// single opened file, Flush can be called multiple times.
+func (f *File) Flush(ctx context.Context, req *fuse.FlushRequest) error {
+	log.Println("File.Flush called - req.ID", req.ID, " - req.Handle:", req.Handle)
+	if f.file != nil {
+		err := f.fs.pcClient.FileClose(ctx, f.file.FD)
+		f.file = nil
+		return err
+	}
+
+	return nil
+}
+
+// A ReleaseRequest asks to release (close) an open file handle.
+func (f *File) Release(ctx context.Context, req *fuse.ReleaseRequest) error {
+	if f.file != nil {
+		err := f.fs.pcClient.FileClose(ctx, f.file.FD)
+		f.file = nil
+		return err
+	}
+
+	return nil
 }
