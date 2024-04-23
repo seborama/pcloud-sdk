@@ -12,11 +12,11 @@ At this stage, this is explorative. The code base is entirely experimental, most
 
 The drive can be mounted via the tests and it can be "walked" through.
 
-Files contents cannot be read just yet.
-
-No write operations are supported
+No write operations are supported for now.
 
 ## Change log
+
+2024-Apr-23 - Added support to read file contents.
 
 2024-Apr-22 - The pCloud drive can listed entirely. `ls` on the root of the mount will list directories and files contained in the root of the pCloud drive.
 
