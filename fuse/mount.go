@@ -21,7 +21,7 @@ type Drive struct {
 	conn *fuse.Conn // TODO: define an interface
 }
 
-func Mount(mountpoint string, pcClient *sdk.Client) (*Drive, error) {
+func NewDrive(mountpoint string, pcClient *sdk.Client) (*Drive, error) {
 	conn, err := fuse.Mount(
 		mountpoint,
 		fuse.FSName("pcloud"),
@@ -62,7 +62,7 @@ func (d *Drive) Unmount() error {
 	return d.conn.Close()
 }
 
-func (d *Drive) Serve() error {
+func (d *Drive) Mount() error {
 	return fs.Serve(d.conn, d.fs)
 }
 

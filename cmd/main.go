@@ -62,6 +62,19 @@ func main() {
 					},
 				},
 			},
+			{
+				Name:    "drive",
+				Aliases: []string{"d"},
+				Usage:   "pCloud FUSE drive",
+				Action:  drive,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "mount-point",
+						Usage:    "Location of mount point",
+						Required: true,
+					},
+				},
+			},
 		},
 	}
 

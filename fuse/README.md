@@ -10,7 +10,14 @@ I am developing on a Linux ARM Raspberry Pi4. I haven't (yet) tried Linux x86_64
 
 At this stage, this is explorative. The code base is entirely experimental, most features are not implemented or only partially.
 
-The drive can be mounted via the tests and it can be "walked" through.
+The drive can be mounted via the CLI:
+
+```bash
+# Remember to first export the CLI's PCLOUD_* environemt variables!
+go run ./cmd drive --mount-point /tmp/pcloud_mnt
+```
+
+Read operations are very slow and `dd` is not supported (need to investigate that one).
 
 No write operations are supported for now.
 

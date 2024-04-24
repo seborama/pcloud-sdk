@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -59,7 +59,7 @@ func (cli *CLI) copyFromPCloudToLocal(ctx context.Context, from, to string) erro
 	resp, err := cli.httpClient.Do(req)
 	if resp != nil {
 		defer func() {
-			_, err = io.Copy(ioutil.Discard, resp.Body)
+			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
 				fmt.Println("discarding remainder of response body:", err.Error())
 			}
@@ -74,7 +74,7 @@ func (cli *CLI) copyFromPCloudToLocal(ctx context.Context, from, to string) erro
 	}
 
 	// TODO: optimise this to read in chunks
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errors.Wrap(err, "reading body of the response to download data from pCloud")
 	}
@@ -83,7 +83,7 @@ func (cli *CLI) copyFromPCloudToLocal(ctx context.Context, from, to string) erro
 		return errors.New(string(body))
 	}
 
-	err = ioutil.WriteFile(to, body, 0600)
+	err = os.WriteFile(to, body, 0600)
 
 	return errors.WithStack(err)
 }
