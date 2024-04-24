@@ -4,17 +4,11 @@ This is a pCloud client written in Go for cross-platform compatibility, such as 
 
 NOTE: I'm **not** affiliated to pCloud so this project is as good or as bad as it gets.
 
+For a pCloud client for Linux and FreeBSD, see [pcloud-drive](https://github.com/seborama/pcloud-drive).
+
 ## Go SDK 🤩
 
 See [SDK](sdk/README.md).
-
-## FUSE drive for pCloud (Linux and FreeBSD) 🤩😍
-
-Mount your pCloud drive on Linux or FreeBSD just like any other disk.
-
-This is the pCloud virtual drive you have been waiting for on your Raspberry Pi, etc.
-
-See [fuse](fuse/README.md)
 
 ## Tracker (file system mutations)
 
@@ -36,7 +30,7 @@ While [pCloud's console client](https://github.com/pcloudcom/console-client) see
 
 1. ✅ implement a Go version of the SDK.
 
-2. 🧑‍💻 FUSE integration (Linux / FreeBSD)
+2. 🧑‍💻 FUSE integration (Linux / FreeBSD) - move to separate repo - [pcloud-drive](https://github.com/seborama/pcloud-drive)
 
 3. implement a sync command.
 
