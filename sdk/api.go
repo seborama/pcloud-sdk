@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -65,7 +64,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 	resp, err := c.httpClient.Do(req)
 	if resp != nil {
 		defer func() {
-			_, err = io.Copy(ioutil.Discard, resp.Body)
+			_, err = io.Copy(io.Discard, resp.Body)
 			if err != nil {
 				fmt.Println("error discarding remainder of response body:", err.Error())
 			}
@@ -79,7 +78,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, query url.Valu
 		return "", nil, errors.Wrap(err, "http Do")
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.Header.Get("content-type"), nil, errors.Wrap(err, "body")
 	}

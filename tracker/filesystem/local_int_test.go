@@ -2,7 +2,6 @@ package filesystem_test
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,7 +31,7 @@ func TestLocalIntegrationSuite(t *testing.T) {
 func (testsuite *LocalIntegrationTestSuite) SetupSuite() {
 	testsuite.ctx = context.Background()
 
-	localTestPath, err := ioutil.TempDir("", "go_pCloud_test")
+	localTestPath, err := os.MkdirTemp("", "go_pCloud_test")
 	testsuite.Require().NoError(err)
 
 	testsuite.localTestPath = localTestPath
@@ -56,22 +55,22 @@ func (testsuite *LocalIntegrationTestSuite) TestLocal_Walk() {
 
 	err := os.MkdirAll(filepath.Join(testsuite.localTestPath, "local"), 0700)
 	testsuite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(testsuite.localTestPath, "local", "File000"), []byte("This is File000"), 0600)
+	err = os.WriteFile(filepath.Join(testsuite.localTestPath, "local", "File000"), []byte("This is File000"), 0600)
 	testsuite.Require().NoError(err)
 
 	err = os.MkdirAll(filepath.Join(testsuite.localTestPath, "local", "Folder1"), 0700)
 	testsuite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder1", "File1"), []byte("This is File1"), 0600)
+	err = os.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder1", "File1"), []byte("This is File1"), 0600)
 	testsuite.Require().NoError(err)
 
 	err = os.MkdirAll(filepath.Join(testsuite.localTestPath, "local", "Folder2"), 0700)
 	testsuite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder2", "File2"), []byte("This is File2"), 0600)
+	err = os.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder2", "File2"), []byte("This is File2"), 0600)
 	testsuite.Require().NoError(err)
 
 	err = os.MkdirAll(filepath.Join(testsuite.localTestPath, "local", "Folder3"), 0700)
 	testsuite.Require().NoError(err)
-	err = ioutil.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder3", "File3"), []byte("This is File3"), 0600)
+	err = os.WriteFile(filepath.Join(testsuite.localTestPath, "local", "Folder3", "File3"), []byte("This is File3"), 0600)
 	testsuite.Require().NoError(err)
 
 	fsEntriesCh := make(chan db.FSEntry)

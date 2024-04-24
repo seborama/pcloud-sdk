@@ -53,7 +53,7 @@ func (s *OneWay) Sync(ctx context.Context) error {
 	//       ie files and folder that were created externally on the "to" side, not by the sync.
 	mutations, err := s.tracker.ListMutations(ctx)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	for _, m := range mutations {

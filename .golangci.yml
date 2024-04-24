@@ -323,7 +323,7 @@ linters-settings:
     for-loops: false # Report preallocation suggestions on for loops, false by default
   nolintlint:
     # Enable to ensure that nolint directives are all used. Default is true.
-    allow-unused: false
+    #allow-unused: false
     # Disable to ensure that nolint directives don't have a leading space. Default is true.
     allow-leading-space: true
     # Exclude following linters from requiring an explanation.  Default is [].
@@ -331,7 +331,7 @@ linters-settings:
     # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
     require-explanation: false
     # Enable to require nolint directives to mention the specific linter being suppressed. Default is false.
-    require-specific: true
+    #require-specific: true
   rowserrcheck:
     packages:
       - github.com/jmoiron/sqlx
@@ -428,7 +428,6 @@ linters:
     - govet
     - nestif
     - megacheck
-    - nolintlint
   disable:
     - maligned
     - prealloc

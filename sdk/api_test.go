@@ -92,7 +92,7 @@ func (testsuite *IntegrationTestSuite) initSuiteTestFolder() {
 
 func (testsuite *IntegrationTestSuite) logout() {
 	lr, err := testsuite.pcc.Logout(testsuite.ctx)
-	testsuite.NoError(err)
+	testsuite.Require().NoError(err)
 
 	fmt.Println("auth token deleted:", lr.AuthDeleted)
 }
