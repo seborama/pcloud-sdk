@@ -7,8 +7,8 @@ import (
 
 	ucli "github.com/urfave/cli/v2"
 
-	pcli "github.com/seborama/pcloud/cli"
-	"github.com/seborama/pcloud/sdk"
+	pcli "github.com/seborama/pcloud-sdk/cli"
+	"github.com/seborama/pcloud-sdk/sdk"
 )
 
 func pCLI(c *ucli.Context) error {

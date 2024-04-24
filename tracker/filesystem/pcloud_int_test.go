@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/seborama/pcloud/sdk"
-	"github.com/seborama/pcloud/tracker/db"
-	"github.com/seborama/pcloud/tracker/filesystem"
+	"github.com/seborama/pcloud-sdk/sdk"
+	"github.com/seborama/pcloud-sdk/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/filesystem"
 )
 
 type PCloudIntegrationTestSuite struct {

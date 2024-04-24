@@ -10,10 +10,10 @@ import (
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 
-	"github.com/seborama/pcloud/sdk"
-	"github.com/seborama/pcloud/tracker"
-	"github.com/seborama/pcloud/tracker/db"
-	"github.com/seborama/pcloud/tracker/filesystem"
+	"github.com/seborama/pcloud-sdk/sdk"
+	"github.com/seborama/pcloud-sdk/tracker"
+	"github.com/seborama/pcloud-sdk/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/filesystem"
 )
 
 func analyse(c *cli.Context) error {

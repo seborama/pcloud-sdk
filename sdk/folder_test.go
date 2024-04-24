@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud-sdk/sdk"
 )
 
 func (testsuite *IntegrationTestSuite) Test_FolderOperations_ByPath() {

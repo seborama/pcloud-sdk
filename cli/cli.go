@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud-sdk/sdk"
 )
 
 const PCloudPrefix = "r:"

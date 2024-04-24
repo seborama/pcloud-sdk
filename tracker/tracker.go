@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 type storer interface {
@@ -50,7 +50,8 @@ type FSDriver interface {
 }
 
 // TODO: the fact that this method returns an interface indicates a problem.
-//       the implementation of this method likely belongs to the sync package, not the tracker.
+//
+//	the implementation of this method likely belongs to the sync package, not the tracker.
 func (t *Tracker) GetRootPath(ctx context.Context) (string, error) {
 	_, rootPath, err := t.store.GetSyncDetails(ctx, t.fsName)
 	if err != nil {

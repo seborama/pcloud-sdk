@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/seborama/pcloud/sync/filesystem"
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/sync/filesystem"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 func TestUnix_StreamFileData_MkFile(t *testing.T) {

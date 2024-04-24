@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )

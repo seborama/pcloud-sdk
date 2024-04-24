@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 // fsOperations wraps basic OS implemented operations on a file system.

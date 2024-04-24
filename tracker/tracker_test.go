@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 
-	"github.com/seborama/pcloud/tracker"
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 type IntegrationTestSuite struct {

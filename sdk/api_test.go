@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/seborama/pcloud/sdk"
+	"github.com/seborama/pcloud-sdk/sdk"
 )
 
 type IntegrationTestSuite struct {

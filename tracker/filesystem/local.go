@@ -13,8 +13,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/seborama/pcloud/tracker/archos"
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/tracker/archos"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 // Local is a file system abstraction for a local file system.

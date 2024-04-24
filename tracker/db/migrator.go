@@ -9,7 +9,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 
-	"github.com/seborama/pcloud/tracker/db/migrations"
+	"github.com/seborama/pcloud-sdk/tracker/db/migrations"
 )
 
 type Migrator struct {

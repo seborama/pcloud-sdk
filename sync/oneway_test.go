@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/seborama/pcloud/sync"
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/sync"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 func TestOneWay_Sync_Created(t *testing.T) {

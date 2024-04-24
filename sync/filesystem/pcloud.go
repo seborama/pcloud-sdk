@@ -6,8 +6,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/seborama/pcloud/sdk"
-	"github.com/seborama/pcloud/tracker/db"
+	"github.com/seborama/pcloud-sdk/sdk"
+	"github.com/seborama/pcloud-sdk/tracker/db"
 )
 
 // pCloudSDK defines the SDK methods used to perform operations on the PCloud file system.
